@@ -73,7 +73,7 @@
         </div>
         <div class="header">
             <Logo />
-            <h1 class="title"><a class="main-title" href="https://github.com/MarSeventh/CloudFlare-ImgBed" target="_blank">{{ ownerName }}</a> ImgHub</h1>
+            <h1 class="title"><a class="main-title" href="https://github.com/zhiyxn/CloudFlare-ImgBed" target="_blank">{{ ownerName }}</a> ImgHub</h1>
         </div>
         <UploadForm 
             :selectedUrlForm="selectedUrlForm" 

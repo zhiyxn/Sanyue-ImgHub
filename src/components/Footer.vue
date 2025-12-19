@@ -1,6 +1,16 @@
+<!--
+ * @Author: zhiyixn
+ * @Date: 2025-12-18 16:10:27
+ * @LastEditors: zhiyixn
+ * @LastEditTime: 2025-12-19 13:29:31
+ * @FilePath: /Sanyue-ImgHub/src/components/Footer.vue
+ * @Description: 
+ * 
+ * Copyright (c) 2025 by zhiyixn, All Rights Reserved. 
+-->
 <template>
     <div class="page-footer" v-if="!disableFooter">
-        <p>© 2024-{{ thisYear }} Designed by <a class="footer-name" href="https://github.com/MarSeventh" target="_blank">SanyueQi</a> for You!
+        <p>© 2024-{{ thisYear }} Designed by <a class="footer-name" href="https://github.com/zhiyxn" target="_blank">zhiyixn</a> for You!
             <a :href="footerLink" target="_blank">
                 <font-awesome-icon icon="paper-plane" class="footer-link-icon"/>
             </a>
@@ -16,7 +26,7 @@ export default {
     computed: {
         ...mapGetters(['userConfig']),
         footerLink() {
-            return this.userConfig?.footerLink || 'https://github.com/MarSeventh'
+            return this.userConfig?.footerLink || 'https://github.com/zhiyxn'
         },
         thisYear() {
             return new Date().getFullYear()

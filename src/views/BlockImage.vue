@@ -80,7 +80,7 @@
         <!-- 项目信息 -->
         <div class="powered-by">
           <p>Powered By: 
-            <a href="https://github.com/MarSeventh/CloudFlare-ImgBed" class="project-link">
+            <a href="https://github.com/zhiyxn/CloudFlare-ImgBed" class="project-link">
               CloudFlare-ImgBed
             </a>
           </p>
@@ -144,7 +144,7 @@ export default {
         },
         contactSupport() {
             // 可以实现联系支持的逻辑
-            window.open('https://github.com/MarSeventh/CloudFlare-ImgBed/issues', '_blank')
+            window.open('https://github.com/zhiyxn/CloudFlare-ImgBed/issues', '_blank')
         }
     }
 }

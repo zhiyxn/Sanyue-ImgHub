@@ -76,7 +76,7 @@
         <!-- 项目信息 -->
         <div class="powered-by">
           <p>Powered By: 
-            <a href="https://github.com/MarSeventh/CloudFlare-ImgBed" class="project-link">
+            <a href="https://github.com/zhiyxn/CloudFlare-ImgBed" class="project-link">
               CloudFlare-ImgBed
             </a>
           </p>
