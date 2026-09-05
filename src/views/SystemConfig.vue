@@ -1,10 +1,10 @@
 <template>
     <div class="container">
         <el-header>
-            <div class="header-content">
+            <div class="header-content admin-header-content">
                 <DashboardTabs activeTab="systemConfig"></DashboardTabs>
                 <div class="header-action">
-                    <el-tooltip :disabled="disableTooltip" content="退出登录" placement="bottom">
+                    <el-tooltip :disabled="disableTooltip" :content="$t('sysConfig.logout')" placement="bottom">
                         <font-awesome-icon icon="sign-out-alt" class="header-icon" @click="handleLogout"></font-awesome-icon>
                     </el-tooltip>
                 </div>
@@ -20,15 +20,17 @@
 </template>
 <script>
 import DashboardTabs from '@/components/DashboardTabs.vue';
-import SysConfigTabs from '@/components/SysConfigTabs.vue';
-import SysCogStatus from '@/components/SysCogStatus.vue';
-import SysCogUpload from '@/components/SysCogUpload.vue';
-import SysCogSecurity from '@/components/SysCogSecurity.vue';
-import SysCogPage from '@/components/SysCogPage.vue';
-import SysCogOthers from '@/components/SysCogOthers.vue';
+import SysConfigTabs from '@/components/config/SysConfigTabs.vue';
+import SysCogStatus from '@/components/config/SysCogStatus.vue';
+import SysCogUpload from '@/components/config/SysCogUpload.vue';
+import SysCogSecurity from '@/components/config/SysCogSecurity.vue';
+import SysCogPage from '@/components/config/SysCogPage.vue';
+import SysCogOthers from '@/components/config/SysCogOthers.vue';
+import backgroundManager from '@/mixins/backgroundManager';
 
 export default {
     name: 'SystemConfig',
+    mixins: [backgroundManager],
     data() {
         return {
             activeIndex: 'status',
@@ -84,8 +86,16 @@ export default {
     },
     methods: {
         handleLogout() {
-            this.$store.commit('setCredentials', null);
-            this.$router.push('/adminLogin');
+            const url = process.env.NODE_ENV === 'production' ? '/api/auth/logout' : '/api/api/auth/logout';
+            fetch(url, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ authType: 'admin' })
+            }).finally(() => {
+                this.$store.commit('setAdminLoggedIn', false);
+                this.$router.push('/adminLogin');
+            });
         },
         // 设置默认锚点
         setDefaultHash() {
@@ -95,6 +105,9 @@ export default {
         },
     },
     mounted() {
+        // 初始化背景图
+        this.initializeBackground('adminBkImg', '.container', false, true);
+
         // 如果 URL 中没有锚点，则设置默认锚点
         if (!window.location.hash) {
             this.setDefaultHash();
@@ -102,6 +115,7 @@ export default {
     },
 }
 </script>
+<style scoped src="@/styles/admin-common.css"></style>
 <style scoped>
 .container {
     background: var(--admin-container-bg-color);
@@ -110,67 +124,31 @@ export default {
     color: var(--admin-container-color);
     margin: 0;
     padding: 0;
-}
-
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    background-color: var(--admin-header-content-bg-color);
-    backdrop-filter: blur(10px);
-    border-bottom: var(--admin-header-content-border-bottom);
-    box-shadow: var(--admin-header-content-box-shadow);
-    transition: background-color 0.5s ease, box-shadow 0.5s ease;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-    position: fixed;
-    top: 0;
-    left: 50%; /* 将左边缘移动到页面中间 */
-    transform: translateX(-50%); /* 向左移动自身宽度的一半 */
-    width: 95%;
-    z-index: 1000;
-    min-height: 45px;
-}
-
-@media (max-width: 768px) {
-    .header-content {
-        flex-direction: column;
-    }
-}
-
-.header-content:hover {
-    background-color: var(--admin-header-content-hover-bg-color);
-    box-shadow: var(--admin-header-content-hover-box-shadow);
-}
-
-.header-icon {
-    font-size: 1.5em;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    color: var(--admin-container-color);
-    outline: none;
-}
-
-.header-icon:hover {
-    color: #B39DDB; /* 使用柔和的淡紫色 */
-    transform: scale(1.2);
-}
-
-.header-action {
-    display: flex;
-    gap: 10px;
+    overflow-x: hidden;
 }
 
 .main-container {
   margin-top: 60px;
   transition: margin-left 0.3s ease, width 0.3s ease; /* 添加过渡效果 */
-  width: calc(100% - 250px); /* 默认宽度（侧边栏展开时） */
-  margin-left: 150px; /* 默认左边距（侧边栏展开时） */
+  width: calc(100% - 280px); /* 默认宽度（侧边栏展开时） */
+  margin-left: 170px; /* 默认左边距（侧边栏展开时） */
 }
 
 .main-container.collapsed {
-  width: calc(100% - 134px); /* 折叠时的宽度 */
-  margin-left: 64px; /* 折叠时的左边距 */
+  width: calc(100% - 150px); /* 折叠时的宽度 */
+  margin-left: 80px; /* 折叠时的左边距 */
+}
+
+/* 移动端不压缩内容，但让出折叠侧边栏宽度 */
+@media (max-width: 768px) {
+  .main-container,
+  .main-container.collapsed {
+    width: auto;
+    margin-left: 65px;
+    margin-right: 15px;
+    padding: 0;
+    min-height: calc(100vh - 60px);
+    box-sizing: border-box;
+  }
 }
 </style>

@@ -2,188 +2,252 @@
     <div class="container">
         <el-container>
             <el-header>
-            <div class="header-content">
+            <div class="header-content admin-header-content">
                 <DashboardTabs activeTab="dashboard"></DashboardTabs>
-                <div class="search-card">
-                    <el-input v-model="tempSearch" size="mini" placeholder="搜索：#标签 -#排除标签 关键字" @keyup.enter="handleSearch">
-                        <template #suffix>
-                            <font-awesome-icon icon="search" class="search-icon" @click="handleSearch"/>
-                        </template>
-                    </el-input>
+                <div class="search-area">
+                    <div class="search-card">
+                        <el-input v-model="tempSearch" size="small" :placeholder="$t('dashboard.searchPlaceholder')" @keyup.enter="handleSearch">
+                            <template #suffix>
+                                <font-awesome-icon icon="search" class="search-icon" @click="handleSearch"/>
+                            </template>
+                        </el-input>
+                    </div>
+                    <!-- 筛选下拉菜单 -->
+                    <FilterDropdown
+                        v-model:filters="filters"
+                        :channelNameOptions="channelNameOptions"
+                        @change="handleFilterChange"
+                    />
                 </div>
-                <span class="stats">
-                    <font-awesome-icon icon="database" class="fa-database"></font-awesome-icon> 文件数量: {{ Number }}
-                </span>
                 <div class="actions">
-                <el-dropdown @command="sort" :hide-on-click="false">
-                    <span class="el-dropdown-link">
-                        <font-awesome-icon :icon="sortIcon" class="header-icon"></font-awesome-icon>
-                    </span>
-                    <template #dropdown>
-                        <el-dropdown-menu>
-                            <el-dropdown-item command="dateDesc">按时间倒序</el-dropdown-item>
-                            <el-dropdown-item command="nameAsc">按名称升序</el-dropdown-item>
-                        </el-dropdown-menu>
-                    </template>
-                </el-dropdown>
-                <el-tooltip :disabled="disableTooltip" content="全选此页" placement="bottom">
-                    <font-awesome-icon :icon="selectPageIcon" class="header-icon" @click="handleSelectPage"></font-awesome-icon>
-                </el-tooltip>
-                <el-dropdown @command="handleBatchAction" :hide-on-click="false" :disabled="selectedFiles.length === 0">
-                    <span class="el-dropdown-link">
-                        <font-awesome-icon icon="ellipsis-h" class="header-icon" :class="{ disabled: selectedFiles.length === 0 }"></font-awesome-icon>
-                    </span>
-                    <template #dropdown>
-                        <el-dropdown-menu>
-                            <el-dropdown-item command="copy">
-                                <font-awesome-icon icon="copy" class="batch-action-item-icon"></font-awesome-icon>
-                                复制
-                            </el-dropdown-item>
-                            <el-dropdown-item command="delete">
-                                <font-awesome-icon icon="trash-alt" class="batch-action-item-icon"></font-awesome-icon>
-                                删除
-                            </el-dropdown-item>
-                            <el-dropdown-item command="download">
-                                <font-awesome-icon icon="download" class="batch-action-item-icon"></font-awesome-icon>
-                                下载
-                            </el-dropdown-item>
-                            <el-dropdown-item command="move">
-                                <font-awesome-icon icon="file-export" class="batch-action-item-icon"></font-awesome-icon>
-                                移动
-                            </el-dropdown-item>
-                            <el-dropdown-item command="tagManagement">
-                                <font-awesome-icon icon="tags" class="batch-action-item-icon"></font-awesome-icon>
-                                标签管理
-                            </el-dropdown-item>
-                            <el-dropdown-item command="ban">
-                                <font-awesome-icon icon="ban" class="batch-action-item-icon"></font-awesome-icon>
-                                加入黑名单
-                            </el-dropdown-item>
-                            <el-dropdown-item command="white">
-                                <font-awesome-icon icon="user-plus" class="batch-action-item-icon"></font-awesome-icon>
-                                加入白名单
-                            </el-dropdown-item>
-                        </el-dropdown-menu>
-                    </template>
-                </el-dropdown>
-                <el-tooltip :disabled="disableTooltip" content="链接格式" placement="bottom">
+                <el-tooltip :disabled="disableTooltip" :content="$t('dashboard.linkFormat')" placement="bottom" :show-after="1000">
                     <span class="el-dropdown-link">
                         <font-awesome-icon icon="link" class="header-icon" @click="showUrlDialog = true"></font-awesome-icon>
                     </span>
                 </el-tooltip>
-                <el-tooltip :disabled="disableTooltip" content="退出登录" placement="bottom">
+                <el-tooltip :disabled="disableTooltip" :content="$t('dashboard.logout')" placement="bottom" :show-after="1000">
                     <font-awesome-icon icon="sign-out-alt" class="header-icon" @click="handleLogout"></font-awesome-icon>
                 </el-tooltip>
                 </div>
             </div>
             </el-header>
-            <el-main class="main-container">
+            <el-main class="main-container" :class="{ 'has-batch-toolbar': selectedFiles.length > 0 }">
             <!-- 目录导航 -->
-            <div class="breadcrumb">
-                <el-breadcrumb separator="/">
-                    <el-breadcrumb-item @click="navigateToFolder('')">根目录</el-breadcrumb-item>
-                    <el-breadcrumb-item 
-                        v-for="(folder, index) in currentPath.split('/').filter(Boolean)" 
-                        :key="index"
-                        @click="navigateToFolder(currentPath.split('/').slice(0, index + 1).join('/'))"
+            <div class="breadcrumb-container">
+                <DashboardCheckbox
+                    :checked="selectPage"
+                    :indeterminate="selectedPageFiles && !selectPage"
+                    variant="breadcrumb"
+                    @click="handleSelectPage"
+                />
+                <div
+                    class="breadcrumb-view-toggle"
+                    :class="{ 'is-list': viewMode === 'list' }"
+                    role="group"
+                >
+                    <button
+                        class="breadcrumb-view-button"
+                        :class="{ 'is-active': viewMode === 'card' }"
+                        type="button"
+                        :title="$t('dashboard.cardView')"
+                        :aria-pressed="viewMode === 'card'"
+                        @click="setViewMode('card')"
                     >
-                        {{ folder }}
-                    </el-breadcrumb-item>
-                </el-breadcrumb>
+                        <font-awesome-icon icon="th-large" class="breadcrumb-view-icon"></font-awesome-icon>
+                    </button>
+                    <button
+                        class="breadcrumb-view-button"
+                        :class="{ 'is-active': viewMode === 'list' }"
+                        type="button"
+                        :title="$t('dashboard.listView')"
+                        :aria-pressed="viewMode === 'list'"
+                        @click="setViewMode('list')"
+                    >
+                        <font-awesome-icon icon="list" class="breadcrumb-view-icon"></font-awesome-icon>
+                    </button>
+                </div>
+                <el-dropdown
+                    trigger="click"
+                    @command="sort"
+                    class="breadcrumb-sort-dropdown"
+                >
+                    <button
+                        class="breadcrumb-sort-button"
+                        type="button"
+                        :title="sortLabel"
+                    >
+                        <font-awesome-icon :icon="sortIcon" class="breadcrumb-sort-icon"></font-awesome-icon>
+                    </button>
+                    <template #dropdown>
+                        <el-dropdown-menu>
+                            <el-dropdown-item command="dateDesc">{{ $t('dashboard.sortByDateDesc') }}</el-dropdown-item>
+                            <el-dropdown-item command="nameAsc">{{ $t('dashboard.sortByNameAsc') }}</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
+                <!-- 移动端目录按钮 -->
+                <div class="mobile-directory-trigger" @click="showMobileDirectoryDrawer = true">
+                    <font-awesome-icon icon="folder-open" class="mobile-directory-icon"/>
+                    <span class="mobile-directory-path">{{ currentPath && currentPath.split('/').filter(Boolean).length > 0 ? currentPath.split('/').filter(Boolean).pop() : $t('dashboard.rootDirectory') }}</span>
+                    <font-awesome-icon icon="chevron-down" class="mobile-directory-arrow"/>
+                </div>
+                <!-- 桌面端面包屑 -->
+                <div class="breadcrumb desktop-only">
+                    <el-breadcrumb separator="/">
+                        <el-breadcrumb-item @click="navigateToFolder('')">
+                            <font-awesome-icon icon="home" class="breadcrumb-home-icon"/>
+                        </el-breadcrumb-item>
+                        <el-breadcrumb-item 
+                            v-for="(folder, index) in currentPath.split('/').filter(Boolean)" 
+                            :key="index"
+                            @click="navigateToFolder(currentPath.split('/').filter(Boolean).slice(0, index + 1).join('/'))">
+                            {{ folder }}
+                        </el-breadcrumb-item>
+                    </el-breadcrumb>
+                </div>
+                <span class="stats-badge" :title="$t('dashboard.totalFiles', { count: $data.Number })">
+                    <font-awesome-icon icon="database" class="stats-badge-icon"/>
+                    {{ Number }}
+                </span>
             </div>
-            <div class="content" v-loading="loading">
+            
+            <!-- 卡片视图 -->
+            <div
+                v-if="viewMode === 'card'"
+                class="content"
+                :class="{ 'is-drag-selecting': isDragging }"
+                ref="cardContainerRef"
+                @touchstart.passive="handlePageSwipeStart"
+                @touchend.passive="handlePageSwipeEnd"
+                @touchcancel.passive="resetPageSwipe"
+            >
+                <!-- 加载骨架屏 -->
+                <SkeletonLoader v-if="loading" type="card" :count="pageSize" />
+                <!-- 空状态 -->
+                <div v-else-if="paginatedTableData.length === 0" class="empty-state">
+                    <font-awesome-icon icon="folder-open" class="empty-icon" />
+                    <p class="empty-text">{{ hasSearchOrFilter ? $t('dashboard.noMatchingFiles') : $t('dashboard.currentDirEmpty') }}</p>
+                    <p class="empty-hint">{{ hasSearchOrFilter ? $t('dashboard.adjustSearchHint') : $t('dashboard.uploadHint') }}</p>
+                </div>
                 <!-- 文件夹和文件列表 -->
-                <template v-for="(item, index) in paginatedTableData" :key="index">
+                <template v-else v-for="(item, index) in paginatedTableData" :key="index">
                     <!-- 文件夹卡片 -->
-                    <el-card v-if="isFolder(item)" class="img-card folder-card">
-                        <el-checkbox v-model="item.selected"></el-checkbox>
-                        <div class="folder-icon" @click="enterFolder(item.name)">
-                            <font-awesome-icon icon="folder-open" size="4x"/>
-                        </div>
-                        <div class="folder-overlay">
-                            <div v-if="!isSearchMode" class="folder-actions">
-                                <el-tooltip :disabled="disableTooltip" content="删除" placement="top">
-                                    <el-button size="mini" type="danger" @click.stop="handleDelete(index, item.name)">
-                                        <font-awesome-icon icon="trash-alt"></font-awesome-icon>
-                                    </el-button>
-                                </el-tooltip>
-                                <el-tooltip :disabled="disableTooltip" content="移动" placement="top">
-                                    <el-button size="mini" type="primary" @click.stop="handleMove(index, item.name)">
-                                        <font-awesome-icon icon="file-export"></font-awesome-icon>
-                                    </el-button>
-                                </el-tooltip>  
-                            </div>
-                        </div>
-                        <div class="file-info">{{ getFolderName(item.name) }}</div>
-                    </el-card>
-                    
+                    <FolderCard 
+                        v-if="isFolder(item)"
+                        :name="item.name"
+                        v-model:selected="item.selected"
+                        :showActions="!isSearchMode"
+                        :disableTooltip="disableTooltip"
+                        @enter="enterFolder(item.name)"
+                        @copy="handleFolderCopy(item.name)"
+                        @move="handleMove(index, item.name)"
+                        @delete="handleDelete(index, item.name)"
+                        @touchstart="handleFolderTouchStart(item, index)"
+                        @touchend="handleTouchEnd"
+                        @touchmove="handleTouchEnd"
+                    />
                     <!-- 文件卡片 -->
-                    <el-card v-else class="img-card">
-                        <el-checkbox v-model="item.selected"></el-checkbox>
-                        <div class="file-short-info">
-                            <div v-if="item.metadata?.ListType === 'White'" class="success-tag">{{ item.channelTag }}</div>
-                            <div v-else-if="item.metadata?.ListType === 'Block' || item.metadata?.Label === 'adult'" class="fail-tag">{{ item.channelTag }}</div>
-                            <div v-else class="success-tag">{{ item.channelTag }}</div>
-                            <div v-if="item.metadata?.Tags && item.metadata?.Tags.length > 0" class="primary-tag">
-                                <font-awesome-icon icon="tag" style="margin-right: 3px; font-size: 12px;"></font-awesome-icon>
-                                {{ item.metadata.Tags[0] }}
-                                <span v-if="item.metadata.Tags.length > 1" style="margin-left: 2px;">
-                                    (+{{ item.metadata.Tags.length - 1 }})
-                                </span>
-                            </div>
-                        </div>
-                        <video v-if="isVideo(item)" :src="getFileLink(item.name)" autoplay muted loop class="video-preview" @click="handleVideoClick"></video>
-                        <el-image v-else-if="isImage(item)" :preview-teleported="true" :src="getFileLink(item.name)" :preview-src-list="item.previewSrcList" fit="cover" lazy class="image-preview"></el-image>
-                        <div v-else class="file-preview">
-                            <font-awesome-icon icon="file" class="file-icon" size="4x"></font-awesome-icon>
-                        </div>
-                        <div class="image-overlay">
-                            <div class="overlay-buttons">
-                                <div class="button-row">
-                                    <el-tooltip :disabled="disableTooltip" content="复制链接" placement="top">
-                                        <el-button style="width: 10px;" type="primary" @click.stop="handleCopy(index, item.name)">
-                                            <font-awesome-icon icon="copy"></font-awesome-icon>
-                                        </el-button>
-                                    </el-tooltip>
-                                    <el-tooltip :disabled="disableTooltip" content="下载" placement="top">
-                                        <el-button style="width: 10px;" type="primary" @click.stop="handleDownload(item.name)">
-                                            <font-awesome-icon icon="download"></font-awesome-icon>
-                                        </el-button>
-                                    </el-tooltip>
-                                    <el-tooltip :disabled="disableTooltip" content="详情" placement="top">
-                                        <el-button style="width: 10px;" type="primary" @click.stop="openDetailDialog(index, item.name)">
-                                            <font-awesome-icon icon="info"></font-awesome-icon>
-                                        </el-button>
-                                    </el-tooltip>
-                                </div>
-                                <div class="button-row">
-                                    <el-tooltip :disabled="disableTooltip" content="移动" placement="top">
-                                        <el-button style="width: 10px;" type="primary" @click.stop="handleMove(index, item.name)">
-                                            <font-awesome-icon icon="file-export"></font-awesome-icon>
-                                        </el-button>
-                                    </el-tooltip>
-                                    <el-tooltip :disabled="disableTooltip" content="删除" placement="top">
-                                        <el-button style="width: 10px;" type="danger" @click.stop="handleDelete(index, item.name)">
-                                            <font-awesome-icon icon="trash-alt"></font-awesome-icon>
-                                        </el-button>
-                                    </el-tooltip>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="file-info">{{ getFileName(item.metadata?.FileName || item.name) }}</div>
-                    </el-card>
+                    <FileCard 
+                        v-else
+                        :item="item"
+                        v-model:selected="item.selected"
+                        :fileLink="getFileLink(item.name)"
+                        :previewSrcList="item.previewSrcList"
+                        :disableTooltip="disableTooltip"
+                        @detail="openDetailDialog(index, item.name)"
+                        @copy="handleCopy(index, item.name)"
+                        @move="handleMove(index, item.name)"
+                        @delete="handleDelete(index, item.name)"
+                        @download="handleDownload(item.name)"
+                        @touchstart="handleTouchStart(item, index)"
+                        @touchend="handleTouchEnd"
+                        @touchmove="handleTouchEnd"
+                    />
                 </template>
             </div>
+            <!-- 列表视图 -->
+            <div
+                v-else
+                class="list-view"
+                :class="{ 'is-drag-selecting': isDragging }"
+                ref="listContainerRef"
+                @touchstart.passive="handlePageSwipeStart"
+                @touchend.passive="handlePageSwipeEnd"
+                @touchcancel.passive="resetPageSwipe"
+            >
+                <div class="list-header">
+                    <div class="list-col list-col-checkbox">
+                        <el-checkbox
+                            :model-value="isSelectAll"
+                            :indeterminate="isIndeterminate"
+                            @click.stop
+                            @change="handleSelectAllPage"
+                        />
+                    </div>
+                    <div class="list-col list-col-preview">{{ $t('dashboard.preview') }}</div>
+                    <div class="list-col list-col-name">{{ $t('dashboard.fileName') }}</div>
+                    <div class="list-col list-col-tags">{{ $t('dashboard.tags') }}</div>
+                    <div class="list-col list-col-channel">{{ $t('dashboard.channelType') }}</div>
+                    <div class="list-col list-col-channel-name">{{ $t('dashboard.channelNameCol') }}</div>
+                    <div class="list-col list-col-address">{{ $t('dashboard.uploadAddress') }}</div>
+                    <div class="list-col list-col-size">{{ $t('dashboard.fileSize') }}</div>
+                    <div class="list-col list-col-date">{{ $t('dashboard.uploadTime') }}</div>
+                    <div class="list-col list-col-actions">{{ $t('dashboard.actions') }}</div>
+                </div>
+                <!-- 列表骨架屏 -->
+                <SkeletonLoader v-if="loading" type="list" :count="pageSize" />
+                <!-- 空状态 -->
+                <div v-else-if="paginatedTableData.length === 0" class="empty-state list-empty">
+                    <font-awesome-icon icon="folder-open" class="empty-icon" />
+                    <p class="empty-text">{{ hasSearchOrFilter ? $t('dashboard.noMatchingFiles') : $t('dashboard.currentDirEmpty') }}</p>
+                    <p class="empty-hint">{{ hasSearchOrFilter ? $t('dashboard.adjustSearchHint') : $t('dashboard.uploadHint') }}</p>
+                </div>
+                <!-- 实际数据 -->
+                <template v-else>
+                    <FileListItem
+                        v-for="(item, index) in paginatedTableData"
+                        :key="index"
+                        :item="item"
+                        v-model:selected="item.selected"
+                        :fileLink="getFileLink(item.name)"
+                        @enter="enterFolder(item.name)"
+                        @detail="openDetailDialog(index, item.name)"
+                        @copy="handleCopy(index, item.name)"
+                        @folderCopy="handleFolderCopy(item.name)"
+                        @move="handleMove(index, item.name)"
+                        @delete="handleDelete(index, item.name)"
+                        @download="handleDownload(item.name)"
+                        @touchstart="isFolder(item) ? handleFolderTouchStart(item, index) : handleTouchStart(item, index)"
+                        @touchend="handleTouchEnd"
+                        @touchmove="handleTouchEnd"
+                    />
+                </template>
+            </div>
+            
+            <!-- 选区矩形覆盖层 -->
+            <div
+              v-if="isDragging"
+              class="drag-select-overlay"
+              :style="{
+                position: 'fixed',
+                left: selectionRect.left + 'px',
+                top: selectionRect.top + 'px',
+                width: selectionRect.width + 'px',
+                height: selectionRect.height + 'px'
+              }"
+            ></div>
+
             <div class="pagination-container">
-                <el-pagination
-                    background
-                    layout="prev, pager, next"
-                    :total="filteredTableData.length"
-                    :page-size="pageSize"
-                    :current-page="currentPage"
-                    @current-change="handlePageChange">
-                </el-pagination>
-                <div class="pagination-right">
+                <div class="pagination-center">
+                    <el-pagination
+                        background
+                        layout="prev, pager, next"
+                        :total="filteredTableData.length"
+                        :page-size="pageSize"
+                        :current-page="currentPage"
+                        :pager-count="pagerCount"
+                        @current-change="handlePageChange">
+                    </el-pagination>
                     <el-button 
                         type="primary" 
                         @click="refreshFileList" 
@@ -196,112 +260,100 @@
                         @click="loadMoreData" 
                         :loading="loading" 
                         class="load-more">
-                        加载更多
+                        {{ $t('dashboard.loadMore') }}
                     </el-button>
+                </div>
+                <div class="pagination-right">
+                    <span class="page-total">{{ $t('dashboard.totalPages', { count: realTotalPages }) }}</span>
+                    <div class="page-jump">
+                        <span>{{ $t('dashboard.jumpTo') }}</span>
+                        <el-input 
+                            v-model="jumpPage" 
+                            size="small" 
+                            class="jump-input"
+                            @keyup.enter="handleJumpPage"
+                        />
+                        <el-button size="small" type="primary" @click="handleJumpPage" class="jump-btn">GO</el-button>
+                    </div>
                 </div>
             </div>
             </el-main>
         </el-container>
-        <el-dialog title="文件详情" v-model="showdetailDialog" :width="dialogWidth">
-            <div class="detail-actions">
-                <el-button type="primary" @click="handleDownload(detailFile?.name)" round size="small" class="detail-action">
-                    <font-awesome-icon icon="download" style="margin-right: 3px;"></font-awesome-icon> 下载
-                </el-button>
-                <el-button type="primary" @click="handleTagManagement(detailFile?.name)" round size="small" class="detail-action">
-                    <font-awesome-icon icon="tags" style="margin-right: 3px;"></font-awesome-icon> 标签
-                </el-button>
-                <el-button type="primary" @click="handleBlock(detailFile?.name)" round size="small" class="detail-action">
-                    <font-awesome-icon icon="ban" style="margin-right: 3px;"></font-awesome-icon> 黑名单
-                </el-button>
-                <el-button type="primary" @click="handleWhite(detailFile?.name)" round size="small" class="detail-action">
-                    <font-awesome-icon icon="user-plus" style="margin-right: 3px;"></font-awesome-icon> 白名单
-                </el-button>
-                <el-button type="danger" @click="handleDetailDelete(detailFile?.name)" round size="small" class="detail-action">
-                    <font-awesome-icon icon="trash-alt" style="margin-right: 3px;"></font-awesome-icon> 删除
-                </el-button>
-            </div> 
-            <el-tabs  v-model="activeUrlTab" @tab-click="handleTabClick" style="margin-bottom: 10px;">
-                <el-tab-pane label="原始链接" name="originUrl">
-                    <el-input v-model="allUrl.originUrl" readonly @click="handleUrlClick"></el-input>
-                </el-tab-pane>
-                <el-tab-pane label="Markdown" name="mdUrl">
-                    <el-input v-model="allUrl.mdUrl" readonly @click="handleUrlClick"></el-input>
-                </el-tab-pane>
-                <el-tab-pane label="HTML" name="htmlUrl">
-                    <el-input v-model="allUrl.htmlUrl" readonly @click="handleUrlClick"></el-input>
-                </el-tab-pane>
-                <el-tab-pane label="BBCode" name="bbUrl">
-                    <el-input v-model="allUrl.bbUrl" readonly @click="handleUrlClick"></el-input>
-                </el-tab-pane>
-                <el-tab-pane label="TG File ID" v-if="detailFile?.metadata?.TgFileId" name="tgId">
-                    <el-input v-model="allUrl.tgId" readonly @click="handleUrlClick"></el-input>
-                </el-tab-pane>
-                <el-tab-pane label="S3 Location" v-if="detailFile?.metadata?.S3Location" name="s3Location">
-                    <el-input v-model="allUrl.S3Location" readonly @click="handleUrlClick"></el-input>
-                </el-tab-pane>
-            </el-tabs>
-            <el-descriptions direction="vertical" border :column="tableColumnNum">
-                <el-descriptions-item 
-                    label="文件预览"
-                    :rowspan="tablePreviewSpan"
-                    :width="300"
-                    align="center"
-                    >
-                    <video v-if="isVideo(detailFile)" :src="getFileLink(detailFile?.name)" autoplay muted loop class="video-preview" @click="handleVideoClick"></video>
-                    <el-image v-else-if="isImage(detailFile)" :src="getFileLink(detailFile?.name)" fit="cover" lazy class="image-preview"></el-image>
-                    <font-awesome-icon v-else icon="file" class="file-icon-detail"></font-awesome-icon>
-                </el-descriptions-item>
-                <el-descriptions-item label="文件名" class-name="description-item">{{ detailFile?.metadata?.FileName || detailFile?.name }}</el-descriptions-item>
-                <el-descriptions-item label="文件类型" class-name="description-item">{{ detailFile?.metadata?.FileType || '未知' }}</el-descriptions-item>
-                <el-descriptions-item label="文件大小(MB)" class-name="description-item">{{ detailFile?.metadata?.FileSize || '未知' }}</el-descriptions-item>
-                <el-descriptions-item label="上传时间" class-name="description-item">{{ new Date(detailFile?.metadata?.TimeStamp).toLocaleString() || '未知' }}</el-descriptions-item>
-                <el-descriptions-item label="访问状态" class-name="description-item">{{ accessType }}</el-descriptions-item>
-                <el-descriptions-item label="上传渠道" class-name="description-item">{{ detailFile?.metadata?.Channel || '未知' }}</el-descriptions-item>
-                <el-descriptions-item label="审查结果" class-name="description-item">{{ detailFile?.metadata?.Label || '无' }}</el-descriptions-item>
-                <el-descriptions-item label="上传IP" class-name="description-item">{{ detailFile?.metadata?.UploadIP || '未知' }}</el-descriptions-item>
-                <el-descriptions-item label="上传地址" class-name="description-item">{{ detailFile?.metadata?.UploadAddress || '未知' }}</el-descriptions-item>
-                <el-descriptions-item label="文件标签" class-name="description-item">
-                    <div v-if="detailFile?.metadata?.Tags && detailFile?.metadata?.Tags.length > 0" style="display: flex; flex-wrap: wrap; gap: 5px;">
-                        <el-tag 
-                            v-for="tag in detailFile?.metadata?.Tags" 
-                            :key="tag"
-                            size="small"
-                        >
-                            {{ tag }}
-                        </el-tag>
-                    </div>
-                    <span v-else style="color: #909399;">暂无标签</span>
-                </el-descriptions-item>
-            </el-descriptions>
-        </el-dialog>
-        <el-dialog title="链接格式" v-model="showUrlDialog" :width="dialogWidth" :show-close="false">
-            <p style="font-size: medium; font-weight: bold">默认复制链接</p>
-            <el-radio-group v-model="defaultUrlFormat">
-                <el-radio label="originUrl">原始链接</el-radio>
-                <el-radio label="mdUrl">Markdown</el-radio>
-                <el-radio label="htmlUrl">HTML</el-radio>
-                <el-radio label="bbUrl">BBCode</el-radio>
-                <el-radio label="tgId">TG File ID</el-radio>
-                <el-radio label="s3Location">S3链接</el-radio>
-            </el-radio-group>
-            <p style="font-size: medium; font-weight: bold">自定义链接
-                <el-tooltip content="默认链接为https://your.domain/file/xxx.jpg <br> 如果启用自定义链接格式，只保留xxx.jpg部分，其他部分请自行输入" placement="top" raw-content>
-                    <font-awesome-icon icon="question-circle" class="question-icon" size="me"/>
-                </el-tooltip>
-            </p>
-            <el-form label-width="25%">
-                <el-form-item label="启用自定义">
-                    <el-radio-group v-model="useCustomUrl">
-                        <el-radio value="true">是</el-radio>
-                        <el-radio value="false">否</el-radio>
+        <BatchActionBar
+            :selected-count="selectedFiles.length"
+            @action="handleBatchAction"
+            @clear="clearSelection"
+        />
+        <!-- 文件详情弹窗 -->
+        <FileDetailDialog
+            v-model="showdetailDialog"
+            :file="detailFile"
+            :fileLink="getFileLink(detailFile?.name)"
+            :urls="allUrl"
+            @download="handleDownload(detailFile?.name)"
+            @tagManagement="handleTagManagement(detailFile?.name)"
+            @block="handleBlock(detailFile?.name)"
+            @white="handleWhite(detailFile?.name)"
+            @delete="handleDetailDelete(detailFile?.name)"
+            @metadataUpdated="handleMetadataUpdated"
+            @fileRenamed="handleFileRenamed"
+        />
+        <el-dialog :title="$t('dashboard.linkFormat')" v-model="showUrlDialog" :width="dialogWidth" :show-close="false" class="settings-dialog settings-dialog-scope">
+            <div class="dialog-section">
+                <div class="section-header">
+                    <span class="section-title">{{ $t('settings.defaultCopyLink') }}</span>
+                </div>
+                <div class="section-content">
+                    <el-radio-group v-model="defaultUrlFormat" class="radio-card-group grid-2x2">
+                        <el-radio label="originUrl" class="radio-card">
+                            <font-awesome-icon icon="link" class="radio-icon"/>
+                            <span>{{ $t('settings.rawLink') }}</span>
+                        </el-radio>
+                        <el-radio label="mdUrl" class="radio-card">
+                            <font-awesome-icon icon="code" class="radio-icon"/>
+                            <span>Markdown</span>
+                        </el-radio>
+                        <el-radio label="htmlUrl" class="radio-card">
+                            <font-awesome-icon icon="code-branch" class="radio-icon"/>
+                            <span>HTML</span>
+                        </el-radio>
+                        <el-radio label="bbUrl" class="radio-card">
+                            <font-awesome-icon icon="quote-right" class="radio-icon"/>
+                            <span>BBCode</span>
+                        </el-radio>
+                        <el-radio label="tgId" class="radio-card">
+                            <font-awesome-icon icon="paper-plane" class="radio-icon"/>
+                            <span>TG File ID</span>
+                        </el-radio>
+                        <el-radio label="s3Location" class="radio-card">
+                            <font-awesome-icon icon="cloud" class="radio-icon"/>
+                            <span>{{ $t('settings.s3Link') }}</span>
+                        </el-radio>
                     </el-radio-group>
-                </el-form-item>
-                <el-form-item label="自定义前缀" v-if="useCustomUrl === 'true'">
-                    <el-input v-model="customUrlPrefix" placeholder="请输入自定义链接前缀"/>
-                </el-form-item>
-            </el-form>
+                </div>
+            </div>
+
+            <div class="dialog-section">
+                <div class="section-header">
+                    <span class="section-title">{{ $t('settings.customLink') }}</span>
+                    <el-tooltip :content="$t('settings.customLinkTooltip')" placement="top" raw-content>
+                        <font-awesome-icon icon="question-circle" class="section-help-icon"/>
+                    </el-tooltip>
+                </div>
+                <div class="section-content">
+                    <div class="setting-item">
+                        <span class="setting-label">{{ $t('settings.enableCustom') }}</span>
+                        <el-switch v-model="useCustomUrl" active-value="true" inactive-value="false" />
+                    </div>
+                    <div class="setting-item" v-if="useCustomUrl === 'true'">
+                        <span class="setting-label">{{ $t('settings.customPrefix') }}</span>
+                        <el-input v-model="customUrlPrefix" :placeholder="$t('settings.customPrefixPlaceholder')" class="setting-input"/>
+                    </div>
+                </div>
+            </div>
+
             <div class="dialog-action">
-                <el-button type="primary" @click="showUrlDialog = false">确定</el-button>
+                <el-button type="primary" @click="showUrlDialog = false" class="confirm-btn">{{ $t('settings.confirm') }}</el-button>
             </div>
         </el-dialog>
 
@@ -318,6 +370,28 @@
             :selectedFiles="selectedFiles"
             @tagsUpdated="handleBatchTagsUpdated"
         />
+        <!-- 移动端操作菜单 -->
+        <MobileActionSheet
+            v-model="showMobileActionModal"
+            :title="mobileActionIsFolder ? getFolderName(mobileActionFile?.name || '') : (mobileActionFile?.metadata?.FileName || getFileName(mobileActionFile?.name || ''))"
+            :isFolder="mobileActionIsFolder"
+            @action="handleMobileAction"
+        />
+        <!-- 移动端目录抽屉 -->
+        <MobileDirectoryDrawer
+            v-model="showMobileDirectoryDrawer"
+            :currentPath="currentPath"
+            @navigate="navigateToFolder"
+            @goBack="handleGoBack"
+        />
+        <!-- 移动文件对话框 -->
+        <MoveFileDialog
+            v-model="showMoveDialog"
+            :current-directory="currentPath"
+            :is-batch-move="isBatchMove"
+            :initial-path="moveTargetPath"
+            @confirm="confirmMove"
+        />
     </div>
 </template>
 
@@ -325,15 +399,35 @@
 import { mapGetters } from 'vuex';
 import JSZip from 'jszip';
 import DashboardTabs from '@/components/DashboardTabs.vue';
-import TagManagementDialog from '@/components/TagManagementDialog.vue';
-import BatchTagDialog from '@/components/BatchTagDialog.vue';
+import TagManagementDialog from '@/components/dashboard/TagManagementDialog.vue';
+import BatchTagDialog from '@/components/dashboard/BatchTagDialog.vue';
+import SkeletonLoader from '@/components/dashboard/SkeletonLoader.vue';
+import FileCard from '@/components/dashboard/FileCard.vue';
+import FolderCard from '@/components/dashboard/FolderCard.vue';
+import MoveFileDialog from '@/components/dashboard/MoveFileDialog.vue';
+import FileListItem from '@/components/dashboard/FileListItem.vue';
+import FileDetailDialog from '@/components/dashboard/FileDetailDialog.vue';
+import BatchActionBar from '@/components/dashboard/BatchActionBar.vue';
+import MobileActionSheet from '@/components/dashboard/MobileActionSheet.vue';
+import MobileDirectoryDrawer from '@/components/dashboard/MobileDirectoryDrawer.vue';
+import DashboardCheckbox from '@/components/dashboard/DashboardCheckbox.vue';
+import FilterDropdown from '@/components/dashboard/FilterDropdown.vue';
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
 import { fileManager } from '@/utils/fileManager';
 import fetchWithAuth from '@/utils/fetchWithAuth';
+import { validateFolderPath } from '@/utils/pathValidator';
+import backgroundManager from '@/mixins/backgroundManager';
+import { ref } from 'vue';
+import { useDragSelect } from '@/utils/dashboard/useDragSelect.js';
 
 export default {
+name: 'AdminDashBoard',
+mixins: [backgroundManager],
 data() {
     return {
         Number: 0,
+        directFileCount: 0, // 当前目录直接子文件数量
+        directFolderCount: 0, // 当前目录直接子文件夹数量
         showLogoutButton: false,
         tableData: [],
         tempSearch: '',
@@ -360,17 +454,96 @@ data() {
         showTagDialog: false, // 标签管理对话框
         showBatchTagDialog: false, // 批量标签管理对话框
         currentTagFile: '', // 当前标签管理的文件
+        viewMode: 'card', // 视图模式：card 或 list
+        showMobileActionModal: false, // 移动端操作模态框
+        mobileActionFile: null, // 当前移动端操作的文件
+        mobileActionIndex: -1, // 当前移动端操作的文件索引
+        mobileActionIsFolder: false, // 是否为文件夹操作
+        longPressTimer: null, // 长按计时器
+        showMobileDirectoryDrawer: false, // 移动端目录抽屉
+        jumpPage: '', // 跳转页码输入
+        // 筛选相关状态（数组形式支持多选）
+        filters: {
+            accessStatus: [], // 访问状态: 'normal'(正常), 'blocked'(已屏蔽)
+            listType: [],     // 黑白名单: 'White', 'Block', 'None'
+            label: [],         // 审查结果: 'normal', 'teen', 'adult'
+            fileType: [],      // 文件类型: 'image', 'video', 'audio', 'other'
+            channel: [],       // 渠道类型: 'TelegramNew', 'CloudflareR2', 'S3', 'Discord', 'HuggingFace', 'WebDAV', 'External'
+            channelName: []    // 渠道名称: 动态获取
+        },
+        channelNameOptions: [], // 动态从文件列表中提取
+        // 移动文件对话框相关状态
+        showMoveDialog: false, // 移动文件对话框
+        moveTargetPath: '/', // 移动目标路径
+        moveFileKey: '', // 当前移动的文件key
+        moveFileIndex: -1, // 当前移动的文件索引
+        isBatchMove: false, // 是否为批量移动
+        pageSwipeStartX: null,
+        pageSwipeStartY: null,
+        pageSwipeStartTime: 0
     }
 },
 components: {
     DashboardTabs,
     TagManagementDialog,
-    BatchTagDialog
+    BatchTagDialog,
+    SkeletonLoader,
+    FileCard,
+    FolderCard,
+    FileListItem,
+    FileDetailDialog,
+    BatchActionBar,
+    MobileActionSheet,
+    MobileDirectoryDrawer,
+    DashboardCheckbox,
+    FilterDropdown,
+    MoveFileDialog,
+    LanguageSwitcher
+},
+setup() {
+    const cardContainerRef = ref(null);
+    const listContainerRef = ref(null);
+    const viewModeRef = ref('card');
+    const itemsRef = ref([]);
+
+    const { isDragging, selectionRect } = useDragSelect({
+        modes: {
+            card: { containerRef: cardContainerRef, itemSelector: '.img-card' },
+            list: { containerRef: listContainerRef, itemSelector: '.list-item' },
+        },
+        viewMode: viewModeRef,
+        items: itemsRef,
+    });
+
+    return {
+        cardContainerRef,
+        listContainerRef,
+        viewModeRef,
+        itemsRef,
+        isDragging,
+        selectionRect,
+    };
 },
 computed: {
     ...mapGetters(['adminUrlSettings', 'userConfig']),
     filteredTableData() {
         return this.tableData;
+    },
+    totalPages() {
+        return Math.ceil(this.filteredTableData.length / this.pageSize) || 1;
+    },
+    // 基于当前文件夹直接子文件和子文件夹数量计算的真实总页数
+    realTotalPages() {
+        const total = this.directFolderCount + this.directFileCount;
+        return Math.ceil(total / this.pageSize) || 1;
+    },
+    // 计算当前激活的筛选条件数量（数组形式）
+    activeFilterCount() {
+        return Object.values(this.filters).reduce((count, arr) => count + (Array.isArray(arr) ? arr.length : 0), 0);
+    },
+    // 判断是否处于搜索或筛选模式
+    hasSearchOrFilter() {
+        return this.isSearchMode || this.activeFilterCount > 0;
     },
     paginatedTableData() {
         const sortedData = this.sortData(this.filteredTableData);
@@ -387,16 +560,22 @@ computed: {
         });
         // 增加channelTag属性，用于显示渠道信息
         data.forEach(file => {
-            if (file.metadata?.Channel === 'TelegramNew') {
+            if (file.metadata?.Channel === 'TelegramNew' || file.metadata?.Channel === 'Telegram') {
                 file.channelTag = 'TG';
             } else if (file.metadata?.Channel === 'CloudflareR2') {
                 file.channelTag = 'R2';
             } else if (file.metadata?.Channel === 'S3') {
                 file.channelTag = 'S3';
+            } else if (file.metadata?.Channel === 'Discord') {
+                file.channelTag = 'DC';
+            } else if (file.metadata?.Channel === 'HuggingFace') {
+                file.channelTag = 'HF';
+            } else if (file.metadata?.Channel === 'WebDAV') {
+                file.channelTag = 'WD';
             } else if (file.metadata?.Channel === 'External') {
-                file.channelTag = '外链';
+                file.channelTag = this.$t('dashboard.externalTag');
             } else {
-                file.channelTag = '未知';
+                file.channelTag = this.$t('dashboard.unknownTag');
             }
         });
         return data;
@@ -404,16 +583,22 @@ computed: {
     sortIcon() {
         return this.sortOption === 'dateDesc' ? 'sort-amount-down' : 'sort-alpha-up';
     },
+    sortLabel() {
+        return this.sortOption === 'dateDesc' ? this.$t('dashboard.sortByDateDesc') : this.$t('dashboard.sortByNameAsc');
+    },
     dialogWidth() {
         return window.innerWidth > 768 ? '50%' : '90%';
     },
+    detailDialogWidth() {
+        return window.innerWidth > 768 ? '70%' : '90%';
+    },
     accessType() {
         if (this.detailFile?.metadata?.ListType === 'White') {
-            return '正常';
+            return this.$t('filter.normal');
         } else if (this.detailFile?.metadata?.ListType === 'Block' || this.detailFile?.metadata?.Label === 'adult') {
-            return '受限';
+            return this.$t('filter.blocked');
         } else {
-            return '正常';
+            return this.$t('filter.normal');
         }
     },
     allUrl() {
@@ -424,8 +609,9 @@ computed: {
                 'mdUrl': `![${this.detailFile?.metadata?.FileName || this.detailFile?.name}](${this.detailFile?.metadata?.ExternalLink})`,
                 'htmlUrl': `<img src="${this.detailFile?.metadata?.ExternalLink}" alt="${this.detailFile?.metadata?.FileName || this.detailFile?.name}" width=100%>`,
                 'bbUrl': `[img]${this.detailFile?.metadata?.ExternalLink}[/img]`,
-                'tgId': this.detailFile?.metadata?.TgFileId || '未知',
-                'S3Location': this.detailFile?.metadata?.S3Location || '未知'
+                'tgId': this.detailFile?.metadata?.TgFileId || this.$t('fileDetail.unknown'),
+                'S3Location': this.detailFile?.metadata?.S3Location || this.$t('fileDetail.unknown'),
+                'S3CdnFileUrl': this.detailFile?.metadata?.S3CdnFileUrl || this.$t('fileDetail.unknown')
             }
         } else {
             return {
@@ -433,8 +619,9 @@ computed: {
                 'mdUrl': `![${this.detailFile?.metadata?.FileName || this.detailFile?.name}](${this.rootUrl}${this.detailFile?.name})`,
                 'htmlUrl': `<img src="${this.rootUrl}${this.detailFile?.name}" alt="${this.detailFile?.metadata?.FileName || this.detailFile?.name}" width=100%>`,
                 'bbUrl': `[img]${this.rootUrl}${this.detailFile?.name}[/img]`,
-                'tgId': this.detailFile?.metadata?.TgFileId || '未知',
-                'S3Location': this.detailFile?.metadata?.S3Location || '未知'
+                'tgId': this.detailFile?.metadata?.TgFileId || this.$t('fileDetail.unknown'),
+                'S3Location': this.detailFile?.metadata?.S3Location || this.$t('fileDetail.unknown'),
+                'S3CdnFileUrl': this.detailFile?.metadata?.S3CdnFileUrl || this.$t('fileDetail.unknown')
             }
         }
     },
@@ -455,16 +642,41 @@ computed: {
         // 如果当前页有文件被选中，则返回 true，否则返回 false
         return this.paginatedTableData.some(file => file.selected);
     },
-    selectPageIcon() {
-        // 全选为 true 时，返回 check-square；部分选中为 minus-square；全不选为 square
-        return this.selectPage ? 'check-square' : this.selectedPageFiles ? 'minus-square' : 'square';
-    },
     rootUrl() {
         // 链接前缀，优先级：用户自定义 > urlPrefix > 默认
         return this.useCustomUrl === 'true' ? this.customUrlPrefix : this.userConfig?.urlPrefix || `${document.location.origin}/file/`
+    },
+    isSelectAll: {
+        get() {
+            return this.paginatedTableData.length > 0 && this.paginatedTableData.every(file => file.selected);
+        },
+        set(val) {
+            this.paginatedTableData.forEach(file => file.selected = val);
+        }
+    },
+    isIndeterminate() {
+        const selectedCount = this.paginatedTableData.filter(file => file.selected).length;
+        return selectedCount > 0 && selectedCount < this.paginatedTableData.length;
+    },
+    pagerCount() {
+        return window.innerWidth < 768 ? 5 : 7;
     }
 },
 watch: {
+    // Sync viewMode data property to the ref used by useDragSelect
+    viewMode: {
+        handler(newVal) {
+            this.viewModeRef = newVal;
+        },
+        immediate: true
+    },
+    // Sync paginatedTableData computed property to the ref used by useDragSelect
+    paginatedTableData: {
+        handler(newVal) {
+            this.itemsRef = newVal;
+        },
+        immediate: true
+    },
     tableData: {
         handler(newData) {
             // selectedFiles 增加 newData中新选中，不包含在 selectedFiles 中的文件
@@ -499,6 +711,120 @@ watch: {
     }
 },
 methods: {
+    // 切换视图模式
+    setViewMode(mode) {
+        if (this.viewMode === mode) {
+            return;
+        }
+        this.viewMode = mode;
+        localStorage.setItem('viewMode', this.viewMode);
+    },
+    // 列表视图全选当前页
+    handleSelectAllPage(val) {
+        this.paginatedTableData.forEach(file => file.selected = val);
+    },
+    // 移动端长按开始
+    handleTouchStart(item, index) {
+        this.longPressTimer = setTimeout(() => {
+            this.mobileActionFile = item;
+            this.mobileActionIndex = index;
+            this.mobileActionIsFolder = false;
+            this.showMobileActionModal = true;
+        }, 500); // 500ms 长按触发
+    },
+    // 移动端长按结束/取消
+    handleTouchEnd() {
+        if (this.longPressTimer) {
+            clearTimeout(this.longPressTimer);
+            this.longPressTimer = null;
+        }
+    },
+    // 文件夹长按开始
+    handleFolderTouchStart(item, index) {
+        this.longPressTimer = setTimeout(() => {
+            this.mobileActionFile = item;
+            this.mobileActionIndex = index;
+            this.mobileActionIsFolder = true;
+            this.showMobileActionModal = true;
+        }, 500);
+    },
+    // 处理移动端操作
+    handleMobileAction(action) {
+        const file = this.mobileActionFile;
+        const index = this.mobileActionIndex;
+        this.showMobileActionModal = false;
+        
+        if (!file) return;
+        
+        switch (action) {
+            case 'detail':
+                this.openDetailDialog(index, file.name);
+                break;
+            case 'copy':
+                this.handleCopy(index, file.name);
+                break;
+            case 'folderCopy':
+                this.handleFolderCopy(file.name);
+                break;
+            case 'download':
+                this.handleDownload(file.name);
+                break;
+            case 'move':
+                this.handleMove(index, file.name);
+                break;
+            case 'delete':
+                this.handleDelete(index, file.name);
+                break;
+            case 'tag':
+                this.handleTagManagement(file.name);
+                break;
+        }
+    },
+    // 返回上一级目录
+    handleGoBack() {
+        const pathParts = this.currentPath.split('/').filter(Boolean);
+        if (pathParts.length > 0) {
+            pathParts.pop();
+            const parentPath = pathParts.join('/');
+            this.navigateToFolder(parentPath);
+        }
+        this.showMobileDirectoryDrawer = false;
+    },
+    // 获取标签颜色
+    getTagColor(index) {
+        const colors = [
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
+        ];
+        return colors[index % colors.length];
+    },
+    // 视频hover播放控制
+    handleVideoHover(event, isEnter) {
+        const video = event.target;
+        if (isEnter) {
+            video.play().catch(() => {});
+        } else {
+            video.pause();
+            video.currentTime = 0;
+        }
+    },
+    // 格式化文件大小
+    formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '-';
+        bytes = Number(bytes);
+        if (isNaN(bytes)) return '-';
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        let i = 0;
+        while (bytes >= 1024 && i < units.length - 1) {
+            bytes /= 1024;
+            i++;
+        }
+        return bytes.toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+    },
     handleSearch() {
         this.search = this.tempSearch;
         this.isSearchMode = this.search.trim() !== '';
@@ -545,6 +871,76 @@ methods: {
 
         this.refreshFileList();
     },
+    // 处理筛选变化（来自 FilterDropdown 组件）
+    handleFilterChange({ type, filters }) {
+        this.filters = filters;
+        this.currentPage = 1; // 重置到第一页
+        this.refreshFileList();
+    },
+    // 清除所有筛选条件
+    clearFilters() {
+        this.filters = {
+            listType: [],
+            label: [],
+            fileType: [],
+            channel: [],
+            channelName: []
+        };
+        this.currentPage = 1;
+        this.refreshFileList();
+    },
+    // 从 API 获取所有渠道名称
+    async extractChannelNames() {
+        try {
+            const response = await fetchWithAuth('/api/channels?includeDisabled=true', {
+                method: 'GET'
+            });
+
+            if (response.ok) {
+                const channels = await response.json();
+                const channelOptions = [];
+
+                // 类型映射（显示名称）
+                const typeLabels = {
+                    telegram: 'Telegram',
+                    cfr2: 'Cloudflare R2',
+                    s3: 'S3',
+                    discord: 'Discord',
+                    huggingface: 'HuggingFace',
+                    webdav: 'WebDAV'
+                };
+
+                // 按类型提取渠道名称，channel.type是类型内部存储名称（可能根据版本有变化），type是类型对外名称
+                Object.entries(channels).forEach(([type, channelList]) => {
+                    if (Array.isArray(channelList) && channelList.length > 0) {
+                        channelList.forEach(channel => {
+                            if (channel.name) {
+                                channelOptions.push({
+                                    name: channel.name,
+                                    type: channel.type,
+                                    typeLabel: typeLabels[type] || type,
+                                    // 使用 channel.type:channel.name 作为唯一标识
+                                    value: `${channel.type}:${channel.name}`,
+                                });
+                            }
+                        });
+                    }
+                });
+
+                // 按类型和名称排序
+                channelOptions.sort((a, b) => {
+                    if (a.type !== b.type) {
+                        return a.type.localeCompare(b.type);
+                    }
+                    return a.name.localeCompare(b.name);
+                });
+
+                this.channelNameOptions = channelOptions;
+            }
+        } catch (error) {
+            console.error('Failed to fetch channel names:', error);
+        }
+    },
     handleDownload(key) {
         const link = document.createElement('a');
         link.href = this.getFileLink(key);
@@ -564,20 +960,20 @@ methods: {
             .then(() => {
                 this.$message({
                     type: 'success',
-                    message: '复制成功'
+                    message: this.$t('dashboard.copySuccess')
                 });
             })
             .catch(() => {
                 this.$message({
                     type: 'error',
-                    message: '复制失败'
+                    message: this.$t('dashboard.copyFailed')
                 });
             });
     },
     handleDetailDelete(key) {
-        this.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+        this.$confirm(this.$t('dashboard.deleteConfirm'), this.$t('dashboard.deleteConfirmTitle'), {
+        confirmButtonText: this.$t('dashboard.deleteConfirmOk'),
+        cancelButtonText: this.$t('dashboard.deleteConfirmCancel'),
         type: 'warning'
         }).then(() => {
         fetchWithAuth(`/api/manage/delete/${key}`, { method: 'GET' })
@@ -588,21 +984,21 @@ methods: {
                 this.tableData.splice(fileIndex, 1);
                 }
             } else {
-                return Promise.reject('请求失败');
+                return Promise.reject('Request failed');
             }
             })
             .then(() => {
             this.updateStats(-1, false);
-            this.$message.success('删除成功!');
+            this.$message.success(this.$t('dashboard.deleteSuccess'));
             this.showdetailDialog = false;
             })
-            .catch(() => this.$message.error('删除失败，请检查网络连接'));
-        }).catch(() => this.$message.info('已取消删除'));
+            .catch(() => this.$message.error(this.$t('dashboard.deleteFailed')));
+        }).catch(() => console.log('Delete cancelled'));
     },
     handleBlock(key) {
-        this.$confirm('此操作将把该文件加入黑名单, 是否继续?', '提示', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
+        this.$confirm(this.$t('dashboard.blockConfirm'), this.$t('dashboard.deleteConfirmTitle'), {
+            confirmButtonText: this.$t('dashboard.deleteConfirmOk'),
+            cancelButtonText: this.$t('dashboard.deleteConfirmCancel'),
             type: 'warning'
         }).then(() => {
         fetchWithAuth(`/api/manage/block/${key}`, { method: 'GET' })
@@ -613,21 +1009,21 @@ methods: {
                         this.tableData[fileIndex].metadata.ListType = 'Block';
                     }
                 } else {
-                    return Promise.reject('请求失败');
+                    return Promise.reject('Request failed');
                 }
             })
             .then(() => {
-                this.$message.success('加入黑名单成功!');
+                this.$message.success(this.$t('dashboard.blockSuccess'));
             })
-            .catch(() => this.$message.error('加入黑名单失败，请检查网络连接'));
+            .catch(() => this.$message.error(this.$t('dashboard.blockFailed')));
         }).catch(
-            () => console.log('已取消加入黑名单')
+            () => console.log('Block cancelled')
         );
     },
     handleWhite(key) {
-        this.$confirm('此操作将把该文件加入白名单, 是否继续?', '提示', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
+        this.$confirm(this.$t('dashboard.whiteConfirm'), this.$t('dashboard.deleteConfirmTitle'), {
+            confirmButtonText: this.$t('dashboard.deleteConfirmOk'),
+            cancelButtonText: this.$t('dashboard.deleteConfirmCancel'),
             type: 'warning'
         }).then(() => {
         fetchWithAuth(`/api/manage/white/${key}`, { method: 'GET' })
@@ -638,24 +1034,24 @@ methods: {
                         this.tableData[fileIndex].metadata.ListType = 'White';
                     }
                 } else {
-                    return Promise.reject('请求失败');
+                    return Promise.reject('Request failed');
                 }
             })
             .then(() => {
-                this.$message.success('加入白名单成功!');
+                this.$message.success(this.$t('dashboard.whiteSuccess'));
             })
-            .catch(() => this.$message.error('加入白名单失败，请检查网络连接'));
+            .catch(() => this.$message.error(this.$t('dashboard.whiteFailed')));
         }).catch(
-            () => console.log('已取消加入白名单')
+            () => console.log('White cancelled')
         );
     },
     handleDelete(index, key) {
         // 判断是否为文件夹
         const isFolder = this.tableData.find(file => file.name === key).isFolder;
 
-        this.$confirm(`此操作将永久删除${isFolder ? '文件夹' : '该文件'}, 是否继续?`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+        this.$confirm(isFolder ? this.$t('dashboard.deleteFolderConfirm') : this.$t('dashboard.deleteFileConfirm'), this.$t('dashboard.deleteConfirmTitle'), {
+        confirmButtonText: this.$t('dashboard.deleteConfirmOk'),
+        cancelButtonText: this.$t('dashboard.deleteConfirmCancel'),
         type: 'warning'
         }).then(() => {
         fetchWithAuth(`/api/manage/delete/${key}?folder=${isFolder}`, { method: 'GET' })
@@ -666,21 +1062,21 @@ methods: {
                         this.tableData.splice(fileIndex, 1);
                     }
                 } else {
-                    return Promise.reject('请求失败');
+                    return Promise.reject('Request failed');
                 }
             })
             .then(() => {
                 this.updateStats(-1, false);
                 fileManager.removeFile(key);
-                this.$message.success('删除成功!');
+                this.$message.success(this.$t('dashboard.deleteSuccess'));
             })
-            .catch(() => this.$message.error('删除失败，请检查网络连接'));
-        }).catch(() => this.$message.info('已取消删除'));
+            .catch(() => this.$message.error(this.$t('dashboard.deleteFailed')));
+        }).catch(() => console.log('Delete cancelled'));
     },
     handleBatchDelete() {
-        this.$confirm('此操作将永久删除选中的文件及文件夹, 是否继续?', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+        this.$confirm(this.$t('dashboard.batchDeleteConfirm'), this.$t('dashboard.deleteConfirmTitle'), {
+        confirmButtonText: this.$t('dashboard.deleteConfirmOk'),
+        cancelButtonText: this.$t('dashboard.deleteConfirmCancel'),
         type: 'warning'
         }).then(() => {
         const promises = this.selectedFiles.map(file => {
@@ -703,75 +1099,75 @@ methods: {
                 });
                 this.selectedFiles = [];
                 this.updateStats(-successNum, false);
-                this.$message.success('批量删除成功!');
+                this.$message.success(this.$t('dashboard.batchDeleteSuccess'));
             })
-            .catch(() => this.$message.error('批量删除失败，请检查网络连接'));
-        }).catch(() => this.$message.info('已取消批量删除'));
+            .catch(() => this.$message.error(this.$t('dashboard.batchDeleteFailed')));
+        }).catch(() => console.log('Batch delete cancelled'));
     },
-    handleBatchCopy() {
-        let tmpLinks = '';
-        switch (this.defaultUrlFormat) {
-            case 'originUrl':
-                tmpLinks = this.selectedFiles.map(file => {
-                    // 跳过文件夹
-                    if (file.isFolder) return '';
-
-                    if (file.metadata?.Channel === 'External') {
-                        return file.metadata?.ExternalLink;
-                    } else {
-                        return `${this.rootUrl}${file.name}`;
-                    }
-                }).join('\n');
-                break;
-            case 'mdUrl':
-                tmpLinks = this.selectedFiles.map(file => {
-                    // 跳过文件夹
-                    if (file.isFolder) return '';
-
-                    if (file.metadata?.Channel === 'External') {
-                        return `![${file.metadata?.FileName || file.name}](${file.metadata?.ExternalLink})`;
-                    } else {
-                        return `![${file.metadata?.FileName || file.name}](${this.rootUrl}${file.name})`;
-                    }
-                }).join('\n');
-                break;
-            case 'htmlUrl':
-                tmpLinks = this.selectedFiles.map(file => {
-                    // 跳过文件夹
-                    if (file.isFolder) return '';
-
-                    if (file.metadata?.Channel === 'External') {
-                        return `<img src="${file.metadata?.ExternalLink}" alt="${file.metadata?.FileName || file.name}" width=100%>`;
-                    } else {
-                        return `<img src="${this.rootUrl}${file.name}" alt="${file.metadata?.FileName || file.name}" width=100%>`;
-                    }
-                }).join('\n');
-                break;
-            case 'bbUrl':
-                tmpLinks = this.selectedFiles.map(file => {
-                    // 跳过文件夹
-                    if (file.isFolder) return '';
-
-                    if (file.metadata?.Channel === 'External') {
-                        return `[img]${file.metadata?.ExternalLink}[/img]`;
-                    } else {
-                        return `[img]${this.rootUrl}${file.name}[/img]`;
-                    }
-                }).join('\n');
-                break;
-            case 'tgId':
-                tmpLinks = this.selectedFiles.map(file => file.metadata?.TgFileId || '').join('\n');
-                break;
-            case 's3Location':
-                tmpLinks = this.selectedFiles.map(file => file.metadata?.S3Location || '').join('\n');
-                break;
+    async handleBatchCopy() {
+        // 分离文件和文件夹
+        const files = this.selectedFiles.filter(item => !item.isFolder);
+        const folders = this.selectedFiles.filter(item => item.isFolder);
+        
+        // 如果有文件夹，显示加载状态
+        let loading = null;
+        if (folders.length > 0) {
+            loading = this.$loading({
+                lock: true,
+                text: this.$t('dashboard.fetchingFileList')
+            });
         }
-        // 删除空行
-        tmpLinks = tmpLinks.replace(/^\s*[\r\n]/gm, '');
-
-        const links = tmpLinks;
-        navigator.clipboard ? navigator.clipboard.writeText(links).then(() => this.$message.success('批量复制链接成功')) :
-        this.copyToClipboardFallback(links);
+        
+        try {
+            // 收集所有文件（包括文件夹内的文件）
+            let allFiles = [...files];
+            
+            // 递归获取所有文件夹内的文件
+            for (const folder of folders) {
+                try {
+                    const response = await fetchWithAuth(
+                        `/api/manage/list?dir=${encodeURIComponent(folder.name)}&recursive=true&count=-1`,
+                        { method: 'GET' }
+                    );
+                    const data = await response.json();
+                    if (data.files && data.files.length > 0) {
+                        allFiles = allFiles.concat(data.files);
+                    }
+                } catch (error) {
+                    console.error(`获取文件夹 ${folder.name} 内容失败:`, error);
+                }
+            }
+            
+            if (loading) loading.close();
+            
+            if (allFiles.length === 0) {
+                this.$message.warning(this.$t('dashboard.noLinksAvailable'));
+                return;
+            }
+            
+            // 生成所有链接
+            const links = allFiles.map(file => {
+                return this.generateFileLink(file.name, file.metadata);
+            }).filter(link => link);
+            
+            if (links.length === 0) {
+                this.$message.warning(this.$t('dashboard.noLinksAvailable'));
+                return;
+            }
+            
+            // 复制到剪贴板
+            const text = links.join('\n');
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(text);
+                this.$message.success(this.$t('dashboard.batchCopySuccess', { count: links.length }));
+            } else {
+                this.copyToClipboardFallback(text);
+            }
+        } catch (error) {
+            if (loading) loading.close();
+            console.error('Batch copy failed:', error);
+            this.$message.error(this.$t('dashboard.batchCopyFailed'));
+        }
     },
     copyToClipboardFallback(text) {
         const textarea = document.createElement('textarea');
@@ -783,7 +1179,7 @@ methods: {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        this.$message.success('批量复制链接成功');
+        this.$message.success(this.$t('dashboard.batchCopyLinksSuccess'));
     },
     handleCopy(index, key) {
         let text = '';
@@ -830,24 +1226,26 @@ methods: {
                     break;
             }
         }
-        navigator.clipboard ? navigator.clipboard.writeText(text).then(() => this.$message.success('复制文件链接成功')) :
+        navigator.clipboard ? navigator.clipboard.writeText(text).then(() => this.$message.success(this.$t('dashboard.copyFileLinkSuccess'))) :
         this.copyToClipboardFallback(text);
     },
     async loadMoreData() {
         this.loading = true;
 
         try {
-            // 传递标签参数到后端
+            // 传递标签参数和筛选参数到后端
             await fileManager.loadMoreFiles(
                 this.currentPath, 
                 this.searchKeywords,
                 this.searchIncludeTags,
-                this.searchExcludeTags
+                this.searchExcludeTags,
+                60,
+                this.filters
             );
             // 获取新的文件列表后
             await this.fetchFileList();
         } catch (error) {
-            this.$message.error('加载更多文件失败，请检查网络连接');
+            this.$message.error(this.$t('dashboard.loadMoreFailed'));
         } finally {
             this.loading = false;
         }
@@ -895,8 +1293,16 @@ methods: {
         }
     },
     handleLogout() {
-        this.$store.commit('setCredentials', null);
-        this.$router.push('/adminLogin');
+        const url = process.env.NODE_ENV === 'production' ? '/api/auth/logout' : '/api/api/auth/logout';
+        fetch(url, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ authType: 'admin' })
+        }).finally(() => {
+            this.$store.commit('setAdminLoggedIn', false);
+            this.$router.push('/adminLogin');
+        });
     },
     handleSelectPage() {
         if (this.selectPage) {
@@ -904,6 +1310,10 @@ methods: {
         } else {
             this.paginatedTableData.forEach(file => file.selected = true);
         }
+    },
+    clearSelection() {
+        this.tableData.forEach(file => file.selected = false);
+        this.selectedFiles = [];
     },
     handleBatchAction(command) {
         if (command === 'copy') {
@@ -923,119 +1333,127 @@ methods: {
         }
     },
     handleMove(index, key) {
-        // 弹窗输入新的文件夹路径
-        this.$prompt('请输入新的目录', '移动文件', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            inputPattern: /^\/([a-zA-Z0-9_\u4e00-\u9fa5]+(\/[a-zA-Z0-9_\u4e00-\u9fa5]+)*)?$/,
-            inputErrorMessage: '请输入/开头的正确目录路径'
-        }).then(({ value }) => {
-            // 去掉开头的 /，结尾若没有 /，则加上
-            const newPath = value.replace(/^\/+/, '') + (value.endsWith('/') ? '' : value === '' ? '' : '/');
-            const isFolder = this.tableData.find(file => file.name === key).isFolder;
-            // 判断目标文件夹是否是当前文件夹
-            if (newPath === this.currentPath) {
-                this.$message.warning('目标文件夹不能是当前文件夹');
-                return;
-            }
-            fetchWithAuth(`/api/manage/move/${key}?folder=${isFolder}&dist=${newPath}`, { method: 'GET' })
-                .then(response => {
-                    if (response.ok) {
-                        const fileIndex = this.tableData.findIndex(file => file.name === key);
-                        if (fileIndex !== -1) {
-                            // 更新本地文件管理器
-                            const newKey = newPath + key.split('/').pop();
-                            fileManager.moveFile(key, newKey, isFolder, this.currentPath);
-                            // 移除文件
-                            this.tableData.splice(fileIndex, 1);
-                            // 强制重新渲染内容
-                            this.$nextTick(() => {
-                                // 创建临时数组
-                                const tempData = [...this.tableData];
-                                // 清空数组
-                                this.tableData = [];
-                                // 在下一个tick中恢复数据
-                                this.$nextTick(() => {
-                                    this.tableData = tempData;
-                                });
-                            });
-                        }
-                        this.updateStats(-1, false);
-                        this.$message.success('移动成功!');
-                    } else {
-                        return Promise.reject('请求失败');
-                    }
-                })
-                .then(() => {
-                    // 刷新本地文件列表
-                    this.refreshLocalFileList();
-                })
-                .catch(() => this.$message.error('移动失败，请检查网络连接'));
-        }).catch(() => this.$message.info('已取消移动文件'));
+        // 打开自定义移动对话框
+        this.moveFileKey = key;
+        this.moveFileIndex = index;
+        this.isBatchMove = false;
+        this.moveTargetPath = '/';
+        this.showMoveDialog = true;
     },
     handleBatchMove() {
-        // 弹窗输入新的文件夹路径
-        this.$prompt('请输入新的目录', '移动文件', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            inputPattern: /^\/([a-zA-Z0-9_\u4e00-\u9fa5]+(\/[a-zA-Z0-9_\u4e00-\u9fa5]+)*)?$/,
-            inputErrorMessage: '请输入/开头的正确目录路径'
-        }).then(({ value }) => {
-            // 去掉开头的 /，结尾若没有 /，则加上
-            const newPath = value.replace(/^\/+/, '') + (value.endsWith('/') ? '' : value === '' ? '' : '/');
-            // 判断目标文件夹是否是当前文件夹
-            if (newPath === this.currentPath) {
-                this.$message.warning('目标文件夹不能是当前文件夹');
-                return;
-            }
-            const promises = this.selectedFiles.map(file => {
-                const isFolder = file.isFolder;
-                return fetchWithAuth(`/api/manage/move/${file.name}?folder=${isFolder}&dist=${newPath}`, { method: 'GET' });
-            });
-
-            Promise.all(promises)
-                .then(results => {
-                    let successNum = 0;
-                    results.forEach((response, index) => {
-                        if (response.ok) {
-                            successNum++;
-                            const file = this.selectedFiles[index];
-                            file.selected = false;
-                            const fileIndex = this.tableData.findIndex(f => f.name === file.name);
-                            if (fileIndex !== -1) {
-                                // 更新本地文件管理器
-                                const newKey = newPath + file.name.split('/').pop();
-                                fileManager.moveFile(file.name, newKey, file.isFolder, this.currentPath);
-                                // 移除文件
-                                this.tableData.splice(fileIndex, 1);
-                            }
-                        }
-                    });
-                    // 强制重新渲染内容
-                    this.$nextTick(() => {
-                        // 创建临时数组
-                        const tempData = [...this.tableData];
-                        // 清空数组
-                        this.tableData = [];
-                        // 在下一个tick中恢复数据
+        // 打开自定义移动对话框（批量模式）
+        this.isBatchMove = true;
+        this.moveTargetPath = '/';
+        this.showMoveDialog = true;
+    },
+    // 确认移动操作
+    confirmMove(targetPath) {
+        const value = targetPath;
+        // 使用共享验证器验证路径
+        const validation = validateFolderPath(value);
+        if (!validation.valid) {
+            this.$message.error(validation.error);
+            return;
+        }
+        // 去掉开头的 /，结尾若没有 /，则加上
+        const newPath = value.replace(/^\/+/, '') + (value.endsWith('/') ? '' : value === '' ? '' : '/');
+        // 判断目标文件夹是否是当前文件夹
+        if (newPath === this.currentPath) {
+            this.$message.warning(this.$t('dashboard.moveTargetSameAsCurrent'));
+            return;
+        }
+        
+        // 关闭对话框
+        this.showMoveDialog = false;
+        
+        if (this.isBatchMove) {
+            // 批量移动
+            this.executeBatchMove(newPath);
+        } else {
+            // 单个文件移动
+            this.executeSingleMove(newPath);
+        }
+    },
+    // 执行单个文件移动
+    executeSingleMove(newPath) {
+        const key = this.moveFileKey;
+        const isFolder = this.tableData.find(file => file.name === key)?.isFolder;
+        
+        fetchWithAuth(`/api/manage/move/${key}?folder=${isFolder}&dist=${encodeURIComponent(newPath)}`, { method: 'GET' })
+            .then(response => {
+                if (response.ok) {
+                    const fileIndex = this.tableData.findIndex(file => file.name === key);
+                    if (fileIndex !== -1) {
+                        // 更新本地文件管理器
+                        const newKey = newPath + key.split('/').pop();
+                        fileManager.moveFile(key, newKey, isFolder, this.currentPath);
+                        // 移除文件
+                        this.tableData.splice(fileIndex, 1);
+                        // 强制重新渲染内容
                         this.$nextTick(() => {
-                            this.tableData = tempData;
+                            const tempData = [...this.tableData];
+                            this.tableData = [];
+                            this.$nextTick(() => {
+                                this.tableData = tempData;
+                            });
                         });
+                    }
+                    this.updateStats(-1, false);
+                    this.$message.success(this.$t('dashboard.moveSuccess'));
+                } else {
+                    return Promise.reject('Request failed');
+                }
+            })
+            .then(() => {
+                this.refreshLocalFileList();
+            })
+            .catch(() => this.$message.error(this.$t('dashboard.moveFailed')));
+    },
+    // 执行批量移动
+    executeBatchMove(newPath) {
+        const promises = this.selectedFiles.map(file => {
+            const isFolder = file.isFolder;
+            return fetchWithAuth(`/api/manage/move/${file.name}?folder=${isFolder}&dist=${encodeURIComponent(newPath)}`, { method: 'GET' });
+        });
+
+        Promise.all(promises)
+            .then(results => {
+                let successNum = 0;
+                results.forEach((response, index) => {
+                    if (response.ok) {
+                        successNum++;
+                        const file = this.selectedFiles[index];
+                        file.selected = false;
+                        const fileIndex = this.tableData.findIndex(f => f.name === file.name);
+                        if (fileIndex !== -1) {
+                            // 更新本地文件管理器
+                            const newKey = newPath + file.name.split('/').pop();
+                            fileManager.moveFile(file.name, newKey, file.isFolder, this.currentPath);
+                            // 移除文件
+                            this.tableData.splice(fileIndex, 1);
+                        }
+                    }
+                });
+                // 强制重新渲染内容
+                this.$nextTick(() => {
+                    const tempData = [...this.tableData];
+                    this.tableData = [];
+                    this.$nextTick(() => {
+                        this.tableData = tempData;
                     });
-                    this.updateStats(-successNum, false);
-                    this.$message.success('移动成功!');
-                })
-                .then(() => {
-                    // 刷新本地文件列表
-                    this.refreshLocalFileList();
-                })
-                .catch(() => this.$message.error('移动失败，请检查网络连接'));
-        }).catch(() => this.$message.info('已取消移动文件'));
+                });
+                this.updateStats(-successNum, false);
+                this.$message.success(this.$t('dashboard.moveSuccess'));
+            })
+            .then(() => {
+                this.refreshLocalFileList();
+            })
+            .catch(() => this.$message.error(this.$t('dashboard.moveFailed')));
     },
     handleBatchBlock(){
-        this.$confirm('此操作将把选中的文件加入黑名单, 是否继续?', '提示', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
+        this.$confirm(this.$t('dashboard.batchBlockConfirm'), this.$t('dashboard.deleteConfirmTitle'), {
+            confirmButtonText: this.$t('dashboard.deleteConfirmOk'),
+            cancelButtonText: this.$t('dashboard.deleteConfirmCancel'),
             type: 'warning'
         }).then(() => {
             // 跳过文件夹
@@ -1056,15 +1474,15 @@ methods: {
                             }
                         }
                     });
-                    this.$message.success('批量加入黑名单成功!');
+                    this.$message.success(this.$t('dashboard.batchBlockSuccess'));
                 })
-                .catch(() => this.$message.error('批量加入黑名单失败，请检查网络连接'));
-        }).catch(() => this.$message.info('已取消批量加入黑名单'));
+                .catch(() => this.$message.error(this.$t('dashboard.batchBlockFailed')));
+        }).catch(() => console.log('Batch block cancelled'));
     },
     handleBatchWhite(){
-        this.$confirm('此操作将把选中的文件加入白名单, 是否继续?', '提示', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
+        this.$confirm(this.$t('dashboard.batchWhiteConfirm'), this.$t('dashboard.deleteConfirmTitle'), {
+            confirmButtonText: this.$t('dashboard.deleteConfirmOk'),
+            cancelButtonText: this.$t('dashboard.deleteConfirmCancel'),
             type: 'warning'
         }).then(() => {
             // 跳过文件夹
@@ -1085,10 +1503,10 @@ methods: {
                             }
                         }
                     });
-                    this.$message.success('批量加入白名单成功!');
+                    this.$message.success(this.$t('dashboard.batchWhiteSuccess'));
                 })
-                .catch(() => this.$message.error('批量加入白名单失败，请检查网络连接'));
-        }).catch(() => this.$message.info('已取消批量加入白名单'));
+                .catch(() => this.$message.error(this.$t('dashboard.batchWhiteFailed')));
+        }).catch(() => console.log('Batch white cancelled'));
     },
     handleBatchDownload() {
         // 将选中文件打包成 zip 文件下载
@@ -1130,12 +1548,24 @@ methods: {
             });
     },
     isVideo(file) {
-        let flag = file.metadata?.FileType?.includes('video') || file.metadata?.FileType?.includes('audio');
+        // 排除音频文件
+        if (this.isAudio(file)) return false;
+        let flag = file.metadata?.FileType?.includes('video');
         // 用文件名后缀判断是否为视频文件
         if (!flag) {
-            const videoExtensions = ['mp4', 'webm', 'ogg', 'avi', 'mov', 'flv', 'wmv', 'mkv', 'rmvb', '3gp', 'mpg', 'mpeg', 'm4v', 'f4v', 'rm', 'asf', 'dat', 'ts', 'vob', 'swf', 'divx', 'xvid', 'm2ts', 'mts', 'm2v', '3g2', '3gp2', '3gpp', '3gpp2', 'mpe', 'm1v', 'mpv', 'mpv2', 'mp2v', 'm2t', 'm2ts', 'm2v', 'm4b', 'm4p', 'm4v', 'm4r'];
+            const videoExtensions = ['mp4', 'webm', 'ogg', 'avi', 'mov', 'flv', 'wmv', 'mkv', 'rmvb', '3gp', 'mpg', 'mpeg', 'm4v', 'f4v', 'rm', 'asf', 'dat', 'ts', 'vob', 'swf', 'divx', 'xvid', 'm2ts', 'mts', 'm2v', '3g2', '3gp2', '3gpp', '3gpp2', 'mpe', 'm1v', 'mpv', 'mpv2', 'mp2v', 'm2t', 'm2ts', 'm2v', 'm4v'];
             const extension = file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase();
             flag = videoExtensions.includes(extension);
+        }
+        return flag;
+    },
+    isAudio(file) {
+        let flag = file.metadata?.FileType?.includes('audio');
+        // 用文件名后缀判断是否为音频文件
+        if (!flag) {
+            const audioExtensions = ['mp3', 'wav', 'flac', 'aac', 'ogg', 'wma', 'm4a', 'ape', 'aiff', 'alac', 'opus', 'mid', 'midi', 'm4b', 'm4p', 'm4r', 'amr', 'au', 'ra', 'ram'];
+            const extension = file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase();
+            flag = audioExtensions.includes(extension);
         }
         return flag;
     },
@@ -1158,6 +1588,118 @@ methods: {
         // 到最后一页时，加载更多数据
         if (this.currentPage === Math.ceil(this.tableData.length / this.pageSize)) {
             this.loadMoreData();
+        }
+    },
+    isMobileViewport() {
+        return window.innerWidth < 768;
+    },
+    updateResponsivePageSize() {
+        const nextPageSize = this.isMobileViewport() ? 16 : 15;
+        if (this.pageSize === nextPageSize) return;
+        const firstVisibleIndex = (this.currentPage - 1) * this.pageSize;
+        this.pageSize = nextPageSize;
+        this.currentPage = Math.min(
+            Math.floor(firstVisibleIndex / nextPageSize) + 1,
+            this.realTotalPages
+        );
+    },
+    isSwipeIgnoredTarget(target) {
+        return Boolean(target?.closest?.('button, a, input, textarea, select, .el-checkbox, .action-btn, .list-action-btn'));
+    },
+    handlePageSwipeStart(event) {
+        if (!this.isMobileViewport() || this.isDragging || this.loading || this.showMobileActionModal || this.showMobileDirectoryDrawer || this.isSwipeIgnoredTarget(event.target)) {
+            this.resetPageSwipe();
+            return;
+        }
+        const touch = event.touches?.[0];
+        if (!touch) return;
+        this.pageSwipeStartX = touch.clientX;
+        this.pageSwipeStartY = touch.clientY;
+        this.pageSwipeStartTime = Date.now();
+    },
+    async handlePageSwipeEnd(event) {
+        if (this.pageSwipeStartX === null || this.pageSwipeStartY === null) return;
+        const touch = event.changedTouches?.[0];
+        if (!touch) {
+            this.resetPageSwipe();
+            return;
+        }
+        const deltaX = touch.clientX - this.pageSwipeStartX;
+        const deltaY = touch.clientY - this.pageSwipeStartY;
+        const elapsed = Date.now() - this.pageSwipeStartTime;
+        this.resetPageSwipe();
+
+        if (elapsed > 700 || Math.abs(deltaX) < 64 || Math.abs(deltaX) < Math.abs(deltaY) * 1.35) {
+            return;
+        }
+
+        const targetPage = deltaX < 0 ? this.currentPage + 1 : this.currentPage - 1;
+        await this.goToSwipePage(targetPage);
+    },
+    resetPageSwipe() {
+        this.pageSwipeStartX = null;
+        this.pageSwipeStartY = null;
+        this.pageSwipeStartTime = 0;
+    },
+    async goToSwipePage(page) {
+        if (page < 1 || page > this.realTotalPages || page === this.currentPage) return;
+        if (page > this.totalPages) {
+            await this.loadMoreDataUntilPage(page);
+            return;
+        }
+        this.handlePageChange(page);
+    },
+    // 跳转到指定页码
+    handleJumpPage() {
+        const page = parseInt(this.jumpPage);
+        if (isNaN(page) || page < 1) {
+            this.$message.warning(this.$t('dashboard.invalidPageNumber'));
+            return;
+        }
+        if (page > this.realTotalPages) {
+            this.$message.warning(this.$t('dashboard.pageExceedsMax', { max: this.realTotalPages }));
+            return;
+        }
+        // 如果目标页超过当前已加载的页数，需要先加载更多数据
+        if (page > this.totalPages) {
+            this.$message.info(this.$t('dashboard.loadingData'));
+            this.loadMoreDataUntilPage(page);
+        } else {
+            this.currentPage = page;
+        }
+        this.jumpPage = '';
+    },
+    // 加载数据直到指定页
+    async loadMoreDataUntilPage(targetPage) {
+        this.loading = true;
+        try {
+            // 计算目标页需要的文件数量（不包含文件夹）
+            // 目标页最后一个项目的索引 = targetPage * pageSize
+            // 需要的文件数 = 目标索引 - 已有文件夹数量
+            const targetIndex = targetPage * this.pageSize;
+            const currentFolderCount = this.filteredTableData.filter(item => item.isFolder).length;
+            const currentFileCount = this.filteredTableData.filter(item => !item.isFolder).length;
+            
+            // 需要加载的文件数量 = 目标位置需要的文件数 - 当前已加载的文件数
+            const neededFileCount = Math.max(0, targetIndex - currentFolderCount - currentFileCount);
+            
+            if (neededFileCount > 0) {
+                await fileManager.loadMoreFiles(
+                    this.currentPath,
+                    this.searchKeywords,
+                    this.searchIncludeTags,
+                    this.searchExcludeTags,
+                    neededFileCount,
+                    this.filters
+                );
+                await this.fetchFileList();
+            }
+
+            this.currentPage = Math.min(targetPage, this.totalPages);
+        } catch (error) {
+            this.$message.error(this.$t('dashboard.loadDataFailed'));
+        } finally {
+            this.loading = false;
         }
     },
     // 判断是否为文件夹
@@ -1231,6 +1773,42 @@ methods: {
         return fileName;
     },
     
+    // 获取文件名前半部分（用于中间省略效果）
+    getFileNameStart(name) {
+        if (!name) return '';
+        // 如果文件名较短，返回全部
+        if (name.length <= 30) return name;
+        // 保留开头部分（约60%的长度用于显示前半部分）
+        const dotIndex = name.lastIndexOf('.');
+        if (dotIndex > 0) {
+            // 有扩展名的情况：返回文件名主体部分
+            const baseName = name.substring(0, dotIndex);
+            const keepLength = Math.min(baseName.length, Math.floor(name.length * 0.6));
+            return baseName.substring(0, keepLength);
+        }
+        // 无扩展名的情况
+        return name.substring(0, Math.floor(name.length * 0.6));
+    },
+    
+    // 获取文件名后半部分（用于中间省略效果）
+    getFileNameEnd(name) {
+        if (!name) return '';
+        // 如果文件名较短，返回空
+        if (name.length <= 30) return '';
+        // 保留末尾部分（包含扩展名）
+        const dotIndex = name.lastIndexOf('.');
+        if (dotIndex > 0) {
+            // 有扩展名的情况：返回最后几个字符 + 扩展名
+            const ext = name.substring(dotIndex);
+            const baseName = name.substring(0, dotIndex);
+            const keepLength = Math.min(8, Math.floor(baseName.length * 0.2));
+            return '…' + baseName.substring(baseName.length - keepLength) + ext;
+        }
+        // 无扩展名的情况
+        const keepLength = Math.min(10, Math.floor(name.length * 0.3));
+        return '…' + name.substring(name.length - keepLength);
+    },
+    
     // 进入文件夹
     enterFolder(folderPath) {
         // 确保路径末尾有 '/'
@@ -1279,10 +1857,14 @@ methods: {
 
             // 更新统计信息
             this.updateStats(data.totalCount, true);
+            
+            // 更新直接文件和文件夹数量
+            this.directFileCount = data.directFileCount || 0;
+            this.directFolderCount = data.directFolderCount || 0;
 
         } catch (error) {
             console.error('Error fetching file list:', error);
-            this.$message.error('获取文件列表失败');
+            this.$message.error(this.$t('dashboard.fetchFileListFailed'));
         } finally {
             this.loading = false;
         }
@@ -1292,12 +1874,13 @@ methods: {
         this.refreshLoading = true;
         this.loading = true;
         try {
-            // 传递标签参数到后端
+            // 传递标签参数和筛选参数到后端
             const success = await fileManager.refreshFileList(
                 this.currentPath, 
                 this.searchKeywords,
                 this.searchIncludeTags,
-                this.searchExcludeTags
+                this.searchExcludeTags,
+                this.filters
             );
             if (success) {
                 await this.fetchFileList();
@@ -1305,8 +1888,11 @@ methods: {
                 throw new Error('Refresh failed');
             }
         } catch (error) {
-            console.error('Error refreshing file list:', error);
-            this.$message.error('刷新失败，请重试');
+            // 认证失败由 fetchWithAuth 统一处理跳转，不重复提示
+            if (!error.message?.includes('Unauthorized') && this.$store.state.adminLoggedIn) {
+                console.error('Error refreshing file list:', error);
+                this.$message.error(this.$t('dashboard.refreshFailed'));
+            }
         } finally {
             this.refreshLoading = false;
             this.loading = false;
@@ -1320,7 +1906,7 @@ methods: {
             await this.fetchFileList();
         } catch (error) {
             console.error('Error refreshing local file list:', error);
-            this.$message.error('刷新失败，请重试');
+            this.$message.error(this.$t('dashboard.refreshFailed'));
         } finally {
             this.refreshLoading = false;
             this.loading = false;
@@ -1333,7 +1919,7 @@ methods: {
     },
     handleBatchTagManagement() {
         if (this.selectedFiles.length === 0) {
-            this.$message.warning('请先选择文件');
+            this.$message.warning(this.$t('dashboard.selectFilesFirst'));
             return;
         }
         this.showBatchTagDialog = true;
@@ -1361,28 +1947,125 @@ methods: {
         // 刷新文件列表以显示更新后的标签
         await this.refreshLocalFileList();
     },
+    handleMetadataUpdated(fileId, updatedMetadata) {
+        // 更新 tableData 中对应文件的 metadata
+        const fileIndex = this.tableData.findIndex(f => f.name === fileId);
+        if (fileIndex !== -1) {
+            this.tableData[fileIndex].metadata = { ...this.tableData[fileIndex].metadata, ...updatedMetadata };
+        }
+        // 如果 detailFile 正在显示该文件，同步更新 detailFile
+        if (this.detailFile && this.detailFile.name === fileId) {
+            this.detailFile.metadata = { ...this.detailFile.metadata, ...updatedMetadata };
+        }
+    },
+    handleFileRenamed(oldFileId, newFileId, updatedMetadata) {
+        // 更新 tableData 中对应文件的 name（File_ID）和 metadata
+        const fileIndex = this.tableData.findIndex(f => f.name === oldFileId);
+        if (fileIndex !== -1) {
+            this.tableData[fileIndex].name = newFileId;
+            this.tableData[fileIndex].metadata = { ...this.tableData[fileIndex].metadata, ...updatedMetadata };
+        }
+        // 更新 detailFile 引用并关闭/重新打开详情弹窗以刷新链接
+        if (this.detailFile && this.detailFile.name === oldFileId) {
+            this.detailFile.name = newFileId;
+            this.detailFile.metadata = { ...this.detailFile.metadata, ...updatedMetadata };
+            // 关闭详情弹窗，然后在下一个 tick 重新打开以刷新所有链接
+            this.showdetailDialog = false;
+            this.$nextTick(() => {
+                this.showdetailDialog = true;
+            });
+        }
+    },
+    // 生成单个文件链接
+    generateFileLink(key, metadata) {
+        const isExternal = metadata?.Channel === 'External';
+        const baseUrl = isExternal ? metadata?.ExternalLink : `${this.rootUrl}${key}`;
+        const fileName = metadata?.FileName || key;
+        
+        switch (this.defaultUrlFormat) {
+            case 'originUrl':
+                return baseUrl;
+            case 'mdUrl':
+                return `![${fileName}](${baseUrl})`;
+            case 'htmlUrl':
+                return `<img src="${baseUrl}" alt="${fileName}" width=100%>`;
+            case 'bbUrl':
+                return `[img]${baseUrl}[/img]`;
+            case 'tgId':
+                return metadata?.TgFileId || '';
+            case 's3Location':
+                return metadata?.S3Location || '';
+            default:
+                return baseUrl;
+        }
+    },
+    // 复制文件夹中所有文件的链接
+    async handleFolderCopy(folderName) {
+        // 显示加载状态
+        const loading = this.$loading({
+            lock: true,
+            text: this.$t('dashboard.fetchingFileList')
+        });
+        
+        try {
+            // 调用 list API 递归获取文件夹内所有文件
+            const response = await fetchWithAuth(
+                `/api/manage/list?dir=${encodeURIComponent(folderName)}&recursive=true&count=-1`,
+                { method: 'GET' }
+            );
+            
+            const data = await response.json();
+            loading.close();
+            
+            if (!data.files || data.files.length === 0) {
+                this.$message.warning(this.$t('dashboard.folderEmptyNoLinks'));
+                return;
+            }
+            
+            // 根据当前链接格式生成所有文件链接
+            const links = data.files.map(file => {
+                return this.generateFileLink(file.name, file.metadata);
+            }).filter(link => link);
+            
+            if (links.length === 0) {
+                this.$message.warning(this.$t('dashboard.noLinksAvailable'));
+                return;
+            }
+            
+            // 复制到剪贴板
+            const text = links.join('\n');
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(text);
+                this.$message.success(this.$t('dashboard.copiedFileLinks', { count: links.length }));
+            } else {
+                this.copyToClipboardFallback(text);
+                this.$message.success(this.$t('dashboard.copiedFileLinks', { count: links.length }));
+            }
+        } catch (error) {
+            loading.close();
+            console.error('Copy folder links failed:', error);
+            this.$message.error(this.$t('dashboard.copyFolderLinksFailed'));
+        }
+    },
 },
 mounted() {
+    // 初始化背景图
+    this.initializeBackground('adminBkImg', '.container', false, true);
+    this.updateResponsivePageSize();
+    window.addEventListener('resize', this.updateResponsivePageSize);
+
     this.loading = true;
-    fetchWithAuth("/api/manage/check", { method: 'GET' })
-        .then(response => response.text())
-        .then(result => {
-            if(result == "true"){
-                this.showLogoutButton = true;
-                return true;
-            } else if(result == "Not using basic auth."){
-                return true;
-            } else {
-                throw new Error('Unauthorized');
-            }
-        })
+    // 路由守卫已通过 /api/auth/sessionCheck 验证认证状态
+    this.showLogoutButton = this.$store.state.adminLoggedIn;
+    // 首次加载时刷新文件列表
+    this.refreshFileList()
         .then(() => {
-            // 首次加载时刷新文件列表
-            return this.refreshFileList();
+            // 获取所有渠道名称
+            return this.extractChannelNames();
         })
         .catch((err) => {
             if (err.message !== 'Unauthorized') {
-                this.$message.error('同步数据时出错，请检查网络连接');
+                this.$message.error(this.$t('dashboard.syncDataError'));
             }
         })
         .finally(() => {
@@ -1392,10 +2075,22 @@ mounted() {
     // 读取自定义链接设置项
     this.customUrlPrefix = this.adminUrlSettings.customUrlPrefix;
     this.useCustomUrl = this.adminUrlSettings.useCustomUrl;
+
+    // 恢复视图模式偏好
+    const savedViewMode = localStorage.getItem('viewMode');
+    if (savedViewMode === 'card' || savedViewMode === 'list') {
+        this.viewMode = savedViewMode;
+    }
+},
+beforeUnmount() {
+    window.removeEventListener('resize', this.updateResponsivePageSize);
 }
 
 };
 </script>
+
+<style src="@/styles/settings-dialog.css"></style>
+<style scoped src="@/styles/admin-common.css"></style>
 
 <style scoped>
 .container {
@@ -1407,181 +2102,315 @@ mounted() {
     padding: 0;
 }
 
+/* 确保el-container和el-main不裁剪内容 */
+:deep(.el-container) {
+    overflow: visible;
+}
+
+:deep(.el-main) {
+    overflow: visible;
+}
+
 :deep(.el-dialog) {
     border-radius: 12px;
     background-color: var(--dialog-bg-color);
-    backdrop-filter: blur(10px);
     box-shadow: var(--dialog-box-shadow);
 }
 
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    background-color: var(--admin-header-content-bg-color);
-    backdrop-filter: blur(10px);
-    border-bottom: var(--admin-header-content-border-bottom);
-    box-shadow: var(--admin-header-content-box-shadow);
-    transition: background-color 0.5s ease, box-shadow 0.5s ease;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-    position: fixed;
-    top: 0;
-    left: 50%; /* 将左边缘移动到页面中间 */
-    transform: translateX(-50%); /* 向左移动自身宽度的一半 */
-    width: 95%;
-    z-index: 1000;
-    min-height: 45px;
-}
-
 @media (max-width: 768px) {
-    .header-content {
-        flex-direction: column;
+    .search-card :deep(.el-input__inner) {
+        height: 28px;
+        font-size: 0.85em;
+        width: 50vw;
+    }
+    
+    .search-card :deep(.el-input__wrapper) {
+        padding: 0 12px;
+    }
+    
+    .search-card :deep(.el-input__inner:focus) {
+        width: 65vw;
     }
 }
 
-.header-content:hover {
-    background-color: var(--admin-header-content-hover-bg-color);
-    box-shadow: var(--admin-header-content-hover-box-shadow);
-}
 
-.header-icon {
-    font-size: 1.5em;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    color: var(--admin-container-color);
-    outline: none;
-}
-
-.header-icon:hover {
-    color: var(--admin-purple); /* 使用柔和的淡紫色 */
-    transform: scale(1.2);
-}
-
-
-.stats {
-    font-size: 1.2em;
-    margin-right: 20px;
+/* 面包屑容器，包含路径和文件数量 */
+.breadcrumb-container {
     display: flex;
     align-items: center;
-    background: var(--admin-dashborad-stats-bg-color);
-    padding: 5px 10px;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 10px; /* 与 .content 的 padding 对齐 */
+    margin-top: 12px;
+    margin-bottom: 4px; /* 与下方内容的间距 */
+}
+
+.breadcrumb-view-toggle {
+    position: relative;
+    height: 32px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--glass-border);
     border-radius: 10px;
-    box-shadow: var(--admin-dashboard-stats-shadow);
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
-    color: var(--admin-container-color);
-    cursor: pointer;
+    background: var(--glass-bg);
+    box-shadow: none;
+    overflow: hidden;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-@media (max-width: 768px) {
-    .stats {
-        margin-right: 0;
-        margin-top: 10px;
-    }
+.breadcrumb-view-toggle:hover {
+    border-color: var(--glass-border-hover);
 }
 
-.stats .fa-database {
-    margin-right: 10px;
-    font-size: 1.5em;
-    transition: color 0.3s ease;
-    color: inherit;
-}
-
-.stats:hover {
-    background-color: var(--admin-dashborad-stats-hover-bg-color);
-    box-shadow: var(--admin-dashboard-stats-hover-shadow);
-    color: var(--admin-purple); /* 使用柔和的淡紫色 */
-}
-
-.stats:hover .fa-database {
-    color: var(--admin-purple); /* 使用柔和的淡紫色 */
-}
-
-.header-content .actions {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-@media (max-width: 768px) {
-    .header-content .actions {
-        margin-top: 10px;
-    }
-}
-
-.header-content .actions i {
-    font-size: 1.5em;
-    cursor: pointer;
-    transition: color 0.3s, transform 0.3s;
-    color: var(--admin-container-color);
-}
-
-.header-content .actions i:hover {
-    color: var(--admin-purple); /* 使用柔和的淡紫色 */
-    transform: scale(1.2);
-}
-
-.header-content .actions .el-dropdown-link i {
-    color: var(--admin-container-color);
-}
-
-.header-content .actions .el-dropdown-link i:hover {
-    color: var(--admin-purple); /* 使用柔和的淡紫色 */
-}
-
-.header-content .actions .disabled {
-    color: #bbb;
+.breadcrumb-view-toggle::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 28px;
+    height: 26px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+    transform: translateX(0);
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
 }
 
-.header-content .actions .enabled {
-    color: var(--admin-purple); /* 使用柔和的淡紫色 */
+.breadcrumb-view-toggle.is-list::before {
+    transform: translateX(30px);
 }
 
-.batch-action-item-icon {
-    width: 20px;
-    margin-right: 5px;
+.breadcrumb-view-button {
+    position: relative;
+    z-index: 1;
+    width: 28px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    color: var(--el-text-color-secondary);
+    background: transparent;
+    cursor: pointer;
+    transition: color 0.16s ease;
+}
+
+.breadcrumb-view-button:hover {
+    color: var(--primary-color-accent);
+}
+
+.breadcrumb-view-button.is-active {
+    color: var(--primary-color-accent);
+    background: transparent;
+    box-shadow: none;
+}
+
+.breadcrumb-view-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.breadcrumb-sort-dropdown {
+    flex: 0 0 auto;
+}
+
+.breadcrumb-sort-button {
+    width: 32px;
+    height: 32px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--el-text-color-secondary);
+    background: var(--glass-bg);
+    box-shadow: none;
+    cursor: pointer;
+    transition: color 0.16s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.breadcrumb-sort-button:hover,
+.breadcrumb-sort-button:focus-visible {
+    border-color: var(--glass-border-hover);
+    color: var(--primary-color-accent);
+}
+
+.breadcrumb-sort-button:focus-visible {
+    outline: none;
+}
+
+.breadcrumb-sort-icon {
+    width: 14px;
+    height: 14px;
+}
+
+@media (max-width: 768px) {
+    .breadcrumb-container {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        padding: 0 5px;
+        margin-top: 8px;
+        margin-bottom: 2px;
+    }
+    .breadcrumb-view-toggle {
+        height: 28px;
+        padding: 2px;
+        border-radius: 8px;
+    }
+    .breadcrumb-view-toggle::before {
+        width: 24px;
+        height: 22px;
+        border-radius: 6px;
+    }
+    .breadcrumb-view-toggle.is-list::before {
+        transform: translateX(26px);
+    }
+    .breadcrumb-view-button {
+        width: 24px;
+        height: 22px;
+        border-radius: 6px;
+    }
+    .breadcrumb-view-icon {
+        width: 12px;
+        height: 12px;
+    }
+    .breadcrumb-sort-button {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+    }
+    .breadcrumb-sort-icon {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+/* 文件数量小徽章 */
+.stats-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--el-text-color-secondary);
+    background: var(--glass-bg);
+    padding: 4px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    box-shadow: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.stats-badge:hover {
+    border-color: var(--glass-border-hover);
+}
+
+.stats-badge-icon {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+    .stats-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 8px;
+    }
+    
+    .stats-badge-icon {
+        font-size: 9px;
+    }
+}
+
+
+/* 搜索区域样式（包含搜索框和筛选按钮） */
+.search-area {
+    margin-left: auto;
+    margin-right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+@media (max-width: 768px) {
+    .search-area {
+        margin-right: 0;
+        margin-left: 0;
+        margin-top: 10px;
+        gap: 6px;
+    }
 }
 
 /* 搜索卡片样式 */
 .search-card {
-    margin-left: auto;
-    margin-right: 20px;
+    display: flex;
+    align-items: center;
 }
-@media (max-width: 768px) {
-    .search-card {
-        margin-right: 0;
-        margin-left: 0;
-        margin-top: 10px;
-    }
+.search-card :deep(.el-input) {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 .search-card :deep(.el-input__wrapper) {
+    padding: 0 14px;
     border-radius: 20px;
-    background: var(--admin-dashboard-search-card-bg-color);
-    box-shadow: var(--admin-dashboard-search-card-box-shadow);
-    transition: background-color 0.3s;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
 }
 
 .search-card :deep(.el-input__inner) {
-    width: 300px;
+    width: 280px;
     height: 40px;
     font-size: 1.2em;
     border: none;
     transition: width 0.3s;
     background: none;
 }
+
+.search-card :deep(.el-input__inner::placeholder) {
+    color: var(--el-text-color-placeholder);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 14px;
+    opacity: 0.6;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.search-card :deep(.el-input__inner:focus::placeholder) {
+    opacity: 0.4;
+    transform: translateX(5px);
+}
 @media (max-width: 768px) {
+    .search-card :deep(.el-input__wrapper) {
+        padding: 0 12px;
+    }
+
     .search-card :deep(.el-input__inner) {
-        width: 60vw;
+        width: 45vw;
+        height: 32px;
+        font-size: 1em;
     }
 }
 .search-card :deep(.el-input__inner:focus) {
-    width: 400px;
+    width: 350px;
 }
 @media (max-width: 768px) {
     .search-card :deep(.el-input__inner:focus) {
-        width: 80vw;
+        width: 55vw;
     }
 }
 .search-icon {
@@ -1599,7 +2428,7 @@ mounted() {
     pointer-events: auto;
 }
 .search-card:focus-within .search-icon:hover {
-    color: var(--admin-purple); /* 使用柔和的淡紫色 */
+    color: var(--primary-color-accent);
     transform: scale(1.2);
 }
 .search-card :deep(.el-input__suffix) {
@@ -1614,11 +2443,20 @@ mounted() {
     flex-direction: column;
     padding: 20px 60px;
     min-height: calc(100vh - 80px);
+    transition: padding-bottom 0.24s ease;
+}
+
+.main-container.has-batch-toolbar {
+    padding-bottom: 72px;
 }
 
 @media (max-width: 768px) {
     .main-container {
-        margin-top: 18vh;
+        margin-top: 12vh;
+        padding: 16px 10px;
+    }
+    .main-container.has-batch-toolbar {
+        padding-bottom: 86px;
     }
 }
 
@@ -1633,231 +2471,140 @@ mounted() {
     min-height: 80vh;
 }
 
-/* 在小屏幕上，将所有内容放入一列 */
-@media (max-width: 768px) {
-    .content {
-        grid-template-columns: 1fr; /* 将所有内容放入一列 */
-        grid-template-rows: none;   /* 行根据内容高度自动调整 */
-    }
+.content.is-drag-selecting,
+.list-view.is-drag-selecting {
+    cursor: crosshair;
 }
 
-.img-card {
-    width: 100%;
-    background: var(--admin-dashboard-imgcard-bg-color);
-    border-radius: 8px;
-    box-shadow: var(--admin-dashboard-imgcard-shadow);
-    overflow: hidden;
-    position: relative;
-    transition: transform 0.3s ease;
+.content.is-drag-selecting :deep(.img-card:hover) {
+    transform: none;
 }
 
-.img-card:hover {
-    transform: scale(1.05);
+.content.is-drag-selecting :deep(.img-card:hover .image-preview),
+.content.is-drag-selecting :deep(.img-card:hover .video-preview),
+.content.is-drag-selecting :deep(.img-card:hover .file-icon),
+.content.is-drag-selecting :deep(.img-card:hover .folder-icon-svg) {
+    transform: none;
 }
 
-.image-preview {
-    width: 100%;
-    height: 18vh;
-    object-fit: cover;
-    transition: opacity 0.3s ease;
-    filter: var(--image-preview-filter);
-}
-
-.image-preview:hover {
-    opacity: 0.8;
-}
-
-.file-short-info {
-    position: absolute;
-    z-index: 10;
-    top: 3px;
-    left: 3px;
-    display: flex;
-    gap: 5px;
-    align-items: start;
-}
-
-.success-tag {
-    background-color: rgba(129, 251, 129, 0.3);
-    color: rgba(57, 174, 21, 0.8);
-    border: 0.5px solid rgba(60, 255, 0, 0.1);
-    padding: 2px 5px;
-    border-radius: 5px;
-    font-size: 12px;
-    height: 14px;
-}
-.fail-tag {
-    background-color: rgba(255, 0, 0, 0.3);
-    color: rgba(255, 0, 0, 0.8);
-    border: 0.5px solid rgba(255, 0, 0, 0.1);
-    padding: 2px 5px;
-    border-radius: 5px;
-    font-size: 12px;
-    height: 14px;
-}
-.primary-tag {
-    background-color: rgba(255, 182, 193, 0.5);
-    color: rgba(255, 105, 180, 0.9);
-    border: 0.5px solid rgba(255, 182, 193, 0.3);
-    padding: 2px 5px;
-    border-radius: 5px;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    height: 14px;
-}
-
-.file-preview {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 18vh;
-}
-.file-icon {
-    opacity: 0.6;
-}
-.file-icon-detail {
-    height: 40px;
-}
-
-.file-info {
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    text-align: center;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.image-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.6);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-
-.el-card:hover .image-overlay {
+.content.is-drag-selecting :deep(.image-preview:hover) {
     opacity: 1;
 }
 
-.overlay-buttons {
+.content.is-drag-selecting :deep(.action-btn:hover) {
+    transform: none;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.list-view.is-drag-selecting :deep(.list-item:hover) {
+    background: transparent;
+}
+
+.list-view.is-drag-selecting :deep(.list-action-btn:hover) {
+    color: var(--el-text-color-regular);
+    background: var(--el-fill-color);
+}
+
+.list-view.is-drag-selecting :deep(.list-action-danger:hover) {
+    background: var(--el-fill-color);
+}
+
+/* 空状态样式 */
+.empty-state {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
     display: flex;
     flex-direction: column;
-    gap: 8px; /* 行间距 */
-    pointer-events: auto;
-}
-
-.button-row {
-    display: flex;
-    justify-content: center; /* 按钮居中 */
-    gap: 8px; /* 按钮间距 */
-}
-
-.button-row .el-button {
-    min-width: 36px; /* 统一按钮最小宽度 */
-}
-
-.pagination-container {
-    display: flex;
+    align-items: center;
     justify-content: center;
-    margin-top: 20px;
-    padding-bottom: 20px;
-}
-.load-more {
-    cursor: pointer;
-    background-color: var(--admin-dashboard-btn-bg-color);
-    box-shadow: var(--admin-dashboard-btn-shadow);
-    color: var(--admin-dashboard-btn-color);
-    border: none;
-    transition: color 0.3s;
-    margin-left: 20px;
-}
-.refresh-btn {
-    cursor: pointer;
-    background-color: var(--admin-dashboard-btn-bg-color);
-    box-shadow: var(--admin-dashboard-btn-shadow);
-    color: var(--admin-dashboard-btn-color);
-    border: none;
-    transition: color 0.3s;
-    margin-left: 20px;
+    padding: 60px 20px;
+    color: var(--admin-container-color);
+    opacity: 0.6;
 }
 
-.el-checkbox {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    transform: scale(1.5);
-    z-index: 10;
+.empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    color: var(--admin-container-color);
+    opacity: 0.3;
 }
 
-.video-preview {
-    width: 100%; 
-    height: 18vh;
-    display: block;
-    cursor: pointer;
+.empty-text {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0 0 8px 0;
 }
 
-:deep(.description-item) {
-    word-break: break-all;
-    word-wrap: break-word;
+.empty-hint {
+    font-size: 14px;
+    margin: 0;
+    opacity: 0.7;
 }
 
-.detail-actions {
-    display: flex;
-    justify-content: right;
-    margin-bottom: 10px;
+.list-empty {
+    padding: 80px 20px;
 }
+
+/* 移动端卡片视图 */
 @media (max-width: 768px) {
-    .detail-actions {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
-    .detail-action {
-        margin-left: 0;
+    .content {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: none;
+        gap: 8px;
+        margin-top: 15px;
+        padding: 0;
+        flex-grow: 0;
+        min-height: auto;
+        align-content: start;
+        align-items: start;
     }
 }
-:deep(.btn-prev){
-    border-radius: 100%;
-    position: fixed;
-    top: 50%;
-    left: 18px;
-    scale: 1.3;
-    color: var(--admin-dashboard-btn-color);
+
+/* 列表视图样式 - 仅保留容器和表头 */
+.list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--admin-dashboard-imgcard-bg-color);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    overflow-x: auto;
+    overflow-y: visible;
+    box-shadow: var(--admin-dashboard-imgcard-shadow);
+    margin-top: 15px;
 }
-:deep(.btn-next) {
-    border-radius: 100%;
-    position: fixed;
-    top: 50%;
-    right: 18px;
-    scale: 1.3;
-    color: var(--admin-dashboard-btn-color);
+
+.list-header {
+    display: grid;
+    grid-template-columns: 50px 60px minmax(180px, 1fr) 130px 100px 110px 130px 80px 100px 120px;
+    padding: 12px 20px;
+    background: var(--admin-dashboard-stats-bg);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--el-text-color-secondary);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    min-width: fit-content;
 }
-@media (min-width: 768px) {
-    :deep(.el-pagination.is-background .btn-prev), :deep(.el-pagination.is-background .btn-next) {
-        background-color: var(--admin-dashboard-btn-bg-color);
-        backdrop-filter: blur(10px);
-        box-shadow: var(--admin-dashboard-btn-shadow);
-        transition: all 0.3s ease;
-    }
-    :deep(.el-pagination.is-background .btn-prev:hover), :deep(.el-pagination.is-background .btn-next:hover) {
-        transform: translateY(-10%);
-        box-shadow: var(--admin-dashboard-btn-hover-shadow);
+
+.list-col {
+    display: flex;
+    align-items: center;
+}
+
+.list-col-checkbox {
+    justify-content: center;
+    min-width: 40px;
+}
+
+.list-col-checkbox :deep(.el-checkbox) {
+    --el-checkbox-input-width: 16px;
+    --el-checkbox-input-height: 16px;
+}
+
+/* 移动端列表视图 */
+@media (max-width: 768px) {
+    .list-header {
+        display: none;
     }
 }
 
@@ -1866,69 +2613,141 @@ mounted() {
 }
 
 .breadcrumb {
-    padding: 15px;
-    background-color: var(--el-bg-color);
-    border-radius: 8px;
-    font-size: 1.2em;
-    box-shadow: var(--admin-dashboard-stats-shadow);
-    transition: all 0.3s ease;
-}
-
-.breadcrumb:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--admin-dashboard-stats-hover-shadow);
-}
-
-.folder-card {
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.folder-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-}
-
-.folder-icon {
+    height: 32px;
+    box-sizing: border-box;
     display: flex;
-    justify-content: center;
     align-items: center;
-    width: 100%;
-    height: 18vh;
-    color: var(--el-color-primary);
+    padding: 0 12px;
+    background-color: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    font-size: 0.95em;
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.breadcrumb:hover {
+    border-color: var(--glass-border-hover);
 }
 
-.folder-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: end;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
+.breadcrumb-home-icon {
+    font-size: 14px;
+    color: var(--el-text-color-secondary);
+    cursor: pointer;
+    transition: color 0.2s ease;
 }
 
-.folder-card:hover .folder-overlay {
-    opacity: 1;
+.breadcrumb-home-icon:hover {
+    color: var(--primary-color-accent);
 }
-
-.folder-actions {
-    position: absolute;
-    bottom: 15%;
-    display: flex;
-    pointer-events: auto;
-}
-
 
 :deep(.el-breadcrumb__item) {
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
+    line-height: 32px;
+}
+:deep(.el-breadcrumb),
+:deep(.el-breadcrumb__inner),
+:deep(.el-breadcrumb__separator) {
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
+    line-height: 32px;
+}
+:deep(.el-breadcrumb__inner) {
+    cursor: pointer;
 }
 :deep(.el-breadcrumb__inner:hover) {
-    color: var(--el-color-primary);
+    color: var(--primary-color-accent);
+}
+
+/* 移动端目录触发按钮 */
+.mobile-directory-trigger {
+    display: none;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 28px;
+    box-sizing: border-box;
+    gap: 6px;
+    padding: 0 10px;
+    background: var(--glass-bg);
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.mobile-directory-trigger:active {
+    border-color: var(--glass-border-hover);
+}
+
+.breadcrumb-view-toggle,
+.breadcrumb,
+.stats-badge,
+.refresh-btn,
+.mobile-directory-trigger {
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+
+.mobile-directory-icon {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--primary-color-accent);
+}
+
+.mobile-directory-path {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--el-text-color-primary);
+    max-width: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mobile-directory-arrow {
+    flex: 0 0 auto;
+    font-size: 8px;
+    color: var(--el-text-color-secondary);
+}
+
+/* 桌面端显示面包屑，隐藏移动端触发器 */
+.desktop-only {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .mobile-directory-trigger {
+        display: flex;
+    }
+    
+    .desktop-only {
+        display: none !important;
+    }
+    
+    .breadcrumb-container {
+        padding: 0;
+        margin-left: 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* 框选选区矩形覆盖层 */
+.drag-select-overlay {
+    position: fixed;
+    background: rgba(24, 144, 255, 0.1);
+    border: 1px solid rgba(24, 144, 255, 0.6);
+    pointer-events: none;
+    z-index: 9999;
+    border-radius: 2px;
 }
 
 </style>

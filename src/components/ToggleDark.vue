@@ -92,13 +92,26 @@ export default {
 
 <style scoped>
 #themeToggle {
-  border: none;
+  border: 1px solid var(--glass-border);
+  box-sizing: border-box;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
+  border-radius: 12px;
+  background-color: var(--glass-bg);
+  box-shadow: none;
+  transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+#themeToggle:hover {
+  border-color: var(--glass-border-hover);
+}
+
+#themeToggle {
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
 }
 @media (max-width: 768px) {
   #themeToggle {

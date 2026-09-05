@@ -1,6 +1,6 @@
 <template>
     <a 
-        :href="href" 
+        :href="logoHref" 
         :target="target"
         :class="logo-link"
     >
@@ -18,7 +18,7 @@ import { mapGetters } from 'vuex'
 export default {
   name: 'Logo',
   props: {
-    // Logo链接地址
+    // Logo链接地址（可被用户配置覆盖）
     href: {
       type: String,
       default: 'https://github.com/zhiyxn/CloudFlare-ImgBed'
@@ -55,6 +55,11 @@ export default {
     enableHover: {
       type: Boolean,
       default: true
+    },
+    // 是否允许使用用户配置的链接（仅上传页面启用）
+    useConfigLink: {
+      type: Boolean,
+      default: false
     }
   },
   computed: {
@@ -64,6 +69,13 @@ export default {
       return this.customSrc || 
              this.userConfig?.logoUrl || 
              require('../assets/logo.png')
+    },
+    logoHref() {
+      // 只有启用 useConfigLink 时才使用用户配置的链接
+      if (this.useConfigLink && this.userConfig?.logoLink) {
+        return this.userConfig.logoLink
+      }
+      return this.href
     },
     logoClasses() {
       return {
@@ -91,8 +103,8 @@ export default {
 /* 位置样式 */
 .logo--fixed {
   position: fixed;
-  top: 5px;
-  left: 5px;
+  top: 20px;
+  left: 20px;
   z-index: 100;
 }
 
@@ -130,6 +142,7 @@ export default {
 /* 悬停动画 */
 .logo--hover-enabled:hover {
   transform: scale(1.1) rotate(5deg);
+  filter: drop-shadow(0 0 10px var(--logo-glow-color));
 }
 
 /* 响应式设计 */

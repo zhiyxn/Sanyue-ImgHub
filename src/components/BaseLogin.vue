@@ -1,6 +1,7 @@
 <template>
-    <div class="login" :class="{ 'is-focused': isFocused }">
+    <div class="login" :style="viewportStyle">
         <ToggleDark class="toggle-dark"/>
+        <LanguageSwitcher class="language-switcher"/>
         <Logo />
         <div class="login-container">
             <h1 class="login-title" tabindex="0">{{ title }}</h1>
@@ -32,7 +33,16 @@
                 </div>
             </div>
             
-            <el-button class="submit" type="primary" @click="handleSubmit">{{ submitText }}</el-button>
+            <el-button 
+                class="submit" 
+                :class="{ 'is-loading': loading }"
+                type="primary" 
+                @click="handleSubmit"
+                :disabled="loading"
+            >
+                <div v-if="loading" class="loading-ring"></div>
+                <span v-else>{{ computedSubmitText }}</span>
+            </el-button>
         </div>
         <Footer class="footer"/>
     </div>
@@ -41,6 +51,7 @@
 <script>
 import Footer from '@/components/Footer.vue';
 import ToggleDark from '@/components/ToggleDark.vue';
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
 import Logo from '@/components/Logo.vue';
 import { mapGetters } from 'vuex';
 import backgroundManager from '@/mixins/backgroundManager';
@@ -63,7 +74,7 @@ export default {
         // 提交按钮文本
         submitText: {
             type: String,
-            default: '登录'
+            default: ''
         },
         // 背景图配置键名
         backgroundKey: {
@@ -74,17 +85,37 @@ export default {
         isAdmin: {
             type: Boolean,
             default: false
+        },
+        // 是否正在加载
+        loading: {
+            type: Boolean,
+            default: false
         }
     },
     data() {
         return {
             formData: {},
             labelUnderlineWidths: [],
-            isFocused: false
+            isFocused: false,
+            viewportHeight: 0
         }
     },
     computed: {
         ...mapGetters(['userConfig']),
+        computedSubmitText() {
+            return this.submitText || this.$t('login.submit');
+        },
+        viewportStyle() {
+            // 当检测到虚拟键盘弹出时，将容器高度收缩到可见视口高度
+            // 容器本身 flex 居中，高度缩小后登录卡片自然在可见区域内居中
+            if (this.viewportHeight > 0) {
+                return {
+                    height: `${this.viewportHeight}px`,
+                    minHeight: `${this.viewportHeight}px`
+                };
+            }
+            return {};
+        }
     },
     watch: {
         fields: {
@@ -99,6 +130,7 @@ export default {
     components: {
         Footer,
         ToggleDark,
+        LanguageSwitcher,
         Logo
     },
     mounted() {
@@ -110,6 +142,17 @@ export default {
         this.$nextTick(() => {
             this.calculateLabelWidths();
         });
+        // 监听 visualViewport 变化，检测虚拟键盘弹出
+        this._handleViewportResize = this.handleViewportResize.bind(this);
+        if (window.visualViewport) {
+            this._initialHeight = window.visualViewport.height;
+            window.visualViewport.addEventListener('resize', this._handleViewportResize);
+        }
+    },
+    beforeDestroy() {
+        if (window.visualViewport && this._handleViewportResize) {
+            window.visualViewport.removeEventListener('resize', this._handleViewportResize);
+        }
     },
     methods: {
         initFormData() {
@@ -149,8 +192,25 @@ export default {
             });
         },
         handleSubmit() {
+            if (this.loading) return;
             // 触发父组件的提交事件，传递表单数据
             this.$emit('submit', { ...this.formData });
+        },
+        handleViewportResize() {
+            if (!window.visualViewport) return;
+            const currentHeight = window.visualViewport.height;
+            // 键盘高度 = 初始视口高度 - 当前视口高度
+            const keyboardHeight = this._initialHeight - currentHeight;
+            // 设定阈值：视口缩小超过 150px 才认为是虚拟键盘弹出
+            // 避免地址栏收缩等小幅变化误触发
+            const KEYBOARD_THRESHOLD = 150;
+            if (keyboardHeight > KEYBOARD_THRESHOLD) {
+                // 将容器高度设为当前可见视口高度
+                // flex 居中会让登录卡片自然在可见区域内居中，不会顶部溢出或底部留白
+                this.viewportHeight = currentHeight;
+            } else {
+                this.viewportHeight = 0;
+            }
         },
         handleInputFocus(event) {
             this.isFocused = true;
@@ -188,40 +248,26 @@ export default {
     overflow-y: auto;
     padding: 20px 0;
     box-sizing: border-box;
+    transition: height 0.35s ease-out, min-height 0.35s ease-out;
 }
 
 .login-title {
-    font-size: 2.5rem;
+    font-size: 2.3rem;
     margin-bottom: 15px;
     color: var(--login-title-color);
-    font-family: 'Noto Sans SC', sans-serif;
+    font-family: 'Pacifico', 'Noto Sans SC', sans-serif;
     cursor: pointer;
     transition: all 0.3s ease;
+    letter-spacing: 2px;
 }
 @media (max-width: 768px) {
     .login-title {
         font-size: 1.5rem;
     }
-    .login {
-        transition: background-color 0.4s ease-out;
-    }
-    .login.is-focused {
-        justify-content: flex-start;
-        padding-top: 10vh;
-    }
-    .login-container {
-        transition: transform 0.4s ease-out, 
-                    box-shadow 0.4s ease-out;
-    }
-    .login.is-focused .login-container {
-        transform: translateY(-20px);
-        box-shadow: var(--login-container-hover-box-shadow), 0 20px 40px rgba(0, 0, 0, 0.15);
-    }
 }
 
 .login-title:hover,
 .login-title:focus {
-    transform: translateY(-2px);
     text-shadow: 0 0 10px var(--login-title-glow-color, rgba(52, 152, 219, 0.5));
 }
 
@@ -232,23 +278,28 @@ export default {
     align-items: center;
     min-height: auto;
     height: auto;
-    width: 40vw;
+    width: 600px;
     border-radius: 12px;
     box-shadow: var(--login-container-box-shadow);
-    background-color: var(--login-container-bg-color);
-    backdrop-filter: blur(8px);
+    background-color: var(--glass-bg) !important;
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid var(--glass-border);
     transition: all 0.3s ease;
     padding: 40px 0;
     gap: 20px;
+    position: relative;
+    z-index: 101;
 }
 @media (max-width: 768px) {
     .login-container {
-        width: 80vw;
+        width: 85vw;
+        padding: 25px 0;
+        gap: 12px;
     }
 }
 .login-container:hover {
     box-shadow: var(--login-container-hover-box-shadow);
-    transform: translateY(-5px);
 }
 
 .input-container {
@@ -263,7 +314,8 @@ export default {
 @media (max-width: 768px) {
     .input-container {
         width: 85%;
-        gap: 6px;
+        gap: 4px;
+        margin-bottom: 8px;
     }
 }
 
@@ -301,7 +353,7 @@ export default {
     bottom: -2px;
     width: 0;
     height: 2px;
-    background: linear-gradient(90deg, var(--login-input-underline-color, #5b9bd3), var(--login-input-underline-secondary-color, #7ba9d8));
+    background: var(--login-input-underline-color, #5b9bd3);
     transition: width 0.3s linear;
     border-radius: 1px;
 }
@@ -330,9 +382,39 @@ export default {
     font-weight: 600;
     letter-spacing: 2px;
     border-radius: 12px;
-    background-color: var(--login-submit-btn-bg-color);
-    transition: all 0.3s ease;
+    background-color: var(--primary-color);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     border: none;
+    overflow: hidden;
+    position: relative;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.submit.is-loading {
+    width: 48px;
+    border-radius: 50%;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    pointer-events: none;
+}
+
+/* Custom Ring Spinner */
+.loading-ring {
+    display: inline-block;
+    width: 34px;
+    height: 34px;
+    border: 4px solid transparent;
+    border-radius: 50%;
+    border-top-color: var(--login-title-color, #ffffff);
+    animation: spin 1s ease-in-out infinite;
+    box-sizing: border-box;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
@@ -341,10 +423,15 @@ export default {
     }
 }
 
-.submit:hover,
-.submit:focus {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+.submit:not(.is-loading):hover,
+.submit:not(.is-loading):focus {
+    transform: scale(1.05);
+    box-shadow: none;
+}
+
+.submit:disabled {
+    cursor: default;
+    transform: none;
 }
 
 .password-input {
@@ -354,7 +441,7 @@ export default {
 }
 
 .password-input:deep(.el-input__prefix) {
-    color: var(--login-input-icon-color, #909399);
+    color: var(--login-input-icon-color, #59636E);
     font-size: 1rem;
     transition: color 0.3s ease;
 }
@@ -366,11 +453,10 @@ export default {
 .password-input:deep(.el-input__wrapper) {
     border-radius: 12px;
     background-color: var(--password-input-bg-color);
-    border: 2px solid transparent;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--glass-border);
+    box-shadow: none;
     padding: 12px 16px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(10px);
     position: relative;
     overflow: hidden;
 }
@@ -391,15 +477,13 @@ export default {
 }
 
 .password-input:deep(.el-input__wrapper):hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    box-shadow: none;
     border-color: var(--login-input-underline-color, #5b9bd3);
 }
 
 .password-input:deep(.el-input__wrapper):focus-within {
     border-color: var(--login-input-underline-color, #5b9bd3);
-    box-shadow: 0 0 0 3px rgba(91, 155, 211, 0.1);
-    transform: translateY(-1px);
+    box-shadow: none;
 }
 
 .password-input:deep(.el-input__inner) {
@@ -442,11 +526,11 @@ export default {
 @media (max-width: 768px) {
     .password-input {
         width: 100%;
-        height: 45px;
+        height: 40px;
     }
     
     .password-input:deep(.el-input__wrapper) {
-        padding: 10px 14px;
+        padding: 8px 12px;
     }
 }
 
@@ -459,15 +543,46 @@ export default {
     position: fixed;
     top: 30px;
     right: 30px;
-    border: none;
-    transition: all 0.3s ease;
-    background-color: var(--toolbar-button-bg-color);
-    box-shadow: var(--toolbar-button-shadow);
-    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+    background-color: var(--glass-bg);
+    box-shadow: none;
     border-radius: 12px;
 }
 .toggle-dark:hover {
     transform: scale(1.05);
-    box-shadow: var(--toolbar-button-shadow-hover);
+    border-color: var(--glass-border-hover);
+}
+.language-switcher {
+    position: fixed;
+    top: 30px;
+    right: 80px;
+    transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+    background-color: var(--glass-bg);
+    box-shadow: none;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+@media (max-width: 768px) {
+    .language-switcher {
+        width: 2rem;
+        height: 2rem;
+    }
+}
+.language-switcher:hover {
+    transform: scale(1.05);
+    border-color: var(--glass-border-hover);
+}
+
+.toggle-dark,
+.language-switcher {
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
 }
 </style>
