@@ -10,29 +10,30 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [22.x]  # 可以根据项目需要设置Node版本
-
     steps:
     # 检出仓库代码
     - uses: actions/checkout@v4
 
     # 设置Node.js版本
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js 22
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 22.x
+        cache: npm
 
     # 安装依赖
     - name: Install dependencies
-      run: |
-        npm install
+      run: npm ci
+
+    - name: Type check
+      run: npm run typecheck
+
+    - name: Unit tests
+      run: npm test
 
     # 运行构建
     - name: Build project
-      run: |
-        npm run build
+      run: npm run build
 
     # 验证构建是否成功
     - name: Verify build

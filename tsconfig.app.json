@@ -1,0 +1,31 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": [
+    "src/main.ts",
+    "src/env.d.ts",
+    "src/App.vue",
+    "src/lib/**/*.ts",
+    "src/types/**/*.ts",
+    "src/services/**/*.ts",
+    "src/stores/**/*.ts",
+    "src/composables/**/*.ts",
+    "src/router/**/*.ts",
+    "src/locales/index.ts",
+    "src/components/ui/**/*.vue",
+    "src/components/ui/**/*.ts",
+    "src/components/modern/**/*.vue",
+    "src/views-modern/**/*.vue"
+  ],
+  "exclude": ["src/**/__tests__/*"],
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}
