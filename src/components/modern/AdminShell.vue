@@ -13,6 +13,7 @@ import {
   Settings2,
   ShieldCheck,
   UploadCloud,
+  Users,
   X,
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
@@ -37,6 +38,7 @@ const mobileOpen = ref(false)
 const primaryLinks = [
   { to: '/dashboard', label: '系统状态', icon: Activity, exact: true },
   { to: '/dashboard/files', label: '文件管理', icon: FolderOpen },
+  { to: '/dashboard/users', label: '用户管理', icon: Users },
   { to: '/dashboard/access', label: '访问规则', icon: ShieldCheck },
   { to: '/dashboard/settings', label: '系统设置', icon: Settings2 },
 ]

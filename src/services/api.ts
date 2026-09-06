@@ -1,6 +1,8 @@
 import { http } from './http'
 import type {
   ChannelMap,
+  CustomerFilesResponse,
+  CustomerSummary,
   FileListResponse,
   PageSettings,
   SecuritySettings,
@@ -86,6 +88,22 @@ export const api = {
   },
   async publicList(params: Record<string, string | number | boolean | undefined>) {
     return (await http.get<FileListResponse>('/api/public/list', { params })).data
+  },
+  async customers(start = 0, count = 20) {
+    return (await http.get<CustomerSummary[]>('/api/manage/cusConfig/list', { params: { start, count } })).data
+  },
+  async customerFiles(ip: string, start = 0, count = 20) {
+    return (await http.get<CustomerFilesResponse>('/api/manage/cusConfig/files', { params: { ip, start, count } })).data
+  },
+  async blockedCustomerIps() {
+    const value = (await http.get<string>('/api/manage/cusConfig/blockipList', { responseType: 'text' })).data
+    return value.split(',').map((item) => item.trim()).filter(Boolean)
+  },
+  async setCustomerAllowed(ip: string, allowed: boolean) {
+    const action = allowed ? 'whiteip' : 'blockip'
+    return (await http.post(`/api/manage/cusConfig/${action}`, ip, {
+      headers: { 'Content-Type': 'text/plain' },
+    })).data
   },
   async deleteFile(name: string) {
     return (await http.delete(`/api/manage/delete/${encodeURIComponent(name)}`)).data

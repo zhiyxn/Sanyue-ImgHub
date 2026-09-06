@@ -80,6 +80,17 @@ export interface FileListResponse {
   allowedDirs?: string[]
 }
 
+export interface CustomerSummary {
+  ip: string
+  address: string
+  count: number
+}
+
+export interface CustomerFilesResponse {
+  data: FileRecord[]
+  total: number
+}
+
 export interface ConfigOption {
   label: string
   label_en?: string
