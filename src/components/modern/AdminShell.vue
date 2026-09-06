@@ -73,7 +73,7 @@ async function logout() {
       v-if="mobileOpen"
       type="button"
       class="fixed inset-0 z-40 bg-stone-950/45 lg:hidden"
-      aria-label="关闭后台导航"
+      :aria-label="t('modern.nav.closeNav')"
       @click="mobileOpen = false"
     />
 
@@ -85,14 +85,14 @@ async function logout() {
         <RouterLink to="/dashboard" class="focus-ring min-w-0 rounded-lg" @click="mobileOpen = false">
           <BrandMark :name="store.siteTitle" :src="store.config.logoUrl" size="sm" :show-name="!collapsed" />
         </RouterLink>
-        <Button class="ml-auto lg:hidden" variant="ghost" size="icon" aria-label="关闭导航" @click="mobileOpen = false">
+        <Button class="ml-auto lg:hidden" variant="ghost" size="icon" :aria-label="t('modern.nav.closeNav')" @click="mobileOpen = false">
           <X />
         </Button>
       </div>
 
       <div class="flex-1 overflow-y-auto px-2 py-4">
         <p v-if="!collapsed" class="mb-2 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{{ t('modern.nav.management') }}</p>
-        <nav class="space-y-1" aria-label="后台导航">
+        <nav class="space-y-1" :aria-label="t('modern.nav.adminNav')">
           <RouterLink
             v-for="item in primaryLinks"
             :key="item.to"
@@ -109,7 +109,7 @@ async function logout() {
 
         <Separator class="my-4" />
         <p v-if="!collapsed" class="mb-2 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{{ t('modern.nav.site') }}</p>
-        <nav class="space-y-1" aria-label="站点导航">
+        <nav class="space-y-1" :aria-label="t('modern.nav.siteNav')">
           <RouterLink
             v-for="item in secondaryLinks"
             :key="item.to"
@@ -141,15 +141,15 @@ async function logout() {
             <p class="truncate text-sm font-medium">{{ t('modern.nav.administrator') }}</p>
             <p class="truncate text-xs text-muted-foreground">{{ t('modern.nav.authenticated') }}</p>
           </div>
-          <Button v-if="!collapsed" variant="ghost" size="icon" aria-label="退出后台" @click="logout"><LogOut /></Button>
+          <Button v-if="!collapsed" variant="ghost" size="icon" :aria-label="t('modern.nav.logoutAdmin')" @click="logout"><LogOut /></Button>
         </div>
       </div>
     </aside>
 
     <section class="min-w-0 flex-1">
       <header class="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-6">
-        <Button variant="ghost" size="icon" class="mr-2 lg:hidden" aria-label="打开后台导航" @click="mobileOpen = true"><Menu /></Button>
-        <Button variant="ghost" size="icon" class="mr-3 hidden lg:inline-flex" :aria-label="collapsed ? '展开侧栏' : '收起侧栏'" @click="collapsed = !collapsed">
+        <Button variant="ghost" size="icon" class="mr-2 lg:hidden" :aria-label="t('modern.nav.openNav')" @click="mobileOpen = true"><Menu /></Button>
+        <Button variant="ghost" size="icon" class="mr-3 hidden lg:inline-flex" :aria-label="t(collapsed ? 'modern.nav.expandSidebar' : 'modern.nav.collapseSidebar')" @click="collapsed = !collapsed">
           <PanelLeftOpen v-if="collapsed" />
           <PanelLeftClose v-else />
         </Button>
