@@ -186,10 +186,13 @@ export interface ConfigField {
   options?: ConfigOption[]
   category?: string
   category_en?: string
+  fixed?: boolean
 }
 
 export interface PageSettings {
   config: ConfigField[]
+  announcementRefreshAt?: number
+  refreshAnnouncement?: boolean
   [key: string]: unknown
 }
 

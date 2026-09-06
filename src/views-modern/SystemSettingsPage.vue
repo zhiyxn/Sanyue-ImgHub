@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ArrowDown, ArrowUp, Database, Globe2, KeyRound, LoaderCircle, MapPinned, Plus, Save, ServerCog, ShieldAlert, Trash2 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import AdminShell from '@/components/modern/AdminShell.vue'
@@ -17,7 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/services/api'
-import type { ConfigField, PageSettings, SecuritySettings } from '@/types/api'
+import type { ChannelMap, ConfigField, PageSettings, SecuritySettings, UploadChannelType } from '@/types/api'
 import { useAppStore } from '@/stores/app'
 
 type Tab = 'page' | 'security' | 'storage'
@@ -25,6 +25,9 @@ const tab = ref<Tab>('page')
 const loading = ref(true)
 const saving = ref(false)
 const page = ref<PageSettings>({ config: [] })
+const availableChannels = ref<ChannelMap>({})
+const channelsLoaded = ref(false)
+const refreshAnnouncement = ref(false)
 const security = ref<SecuritySettings>()
 const userPasswordConfirm = ref('')
 const adminPasswordConfirm = ref('')
@@ -45,13 +48,31 @@ const pageCategories = computed(() => {
   return [...grouped.entries()]
 })
 
+const currentUploadChannel = computed(() => String(page.value.config.find((field) => field.id === 'defaultUploadChannel')?.value || '') as UploadChannelType)
+const currentChannelOptions = computed(() => (availableChannels.value[currentUploadChannel.value] || []).map((channel) => ({ label: channel.name, value: channel.name })))
+
+watch(currentUploadChannel, () => {
+  if (!channelsLoaded.value) return
+  const field = page.value.config.find((item) => item.id === 'defaultChannelName')
+  if (field?.value && !currentChannelOptions.value.some((option) => option.value === field.value)) field.value = ''
+})
+
 onMounted(async () => {
   const results = await Promise.allSettled([
     api.getPageSettings(),
     api.getSecuritySettings(),
+    api.channels(),
   ])
-  if (results[0].status === 'fulfilled') page.value = results[0].value
+  if (results[0].status === 'fulfilled') {
+    page.value = results[0].value
+    page.value.config.forEach((field) => {
+      if ((field.value === undefined || field.value === null || field.value === '') && field.default !== undefined) field.value = field.default
+      if (field.type === 'boolean' && typeof field.value === 'string') field.value = field.value === 'true'
+    })
+  }
   if (results[1].status === 'fulfilled') security.value = results[1].value
+  if (results[2].status === 'fulfilled') availableChannels.value = results[2].value
+  channelsLoaded.value = true
   const rejected = results.find((item) => item.status === 'rejected')
   if (rejected?.status === 'rejected') toast.error(rejected.reason instanceof Error ? rejected.reason.message : '部分配置加载失败')
   loading.value = false
@@ -70,7 +91,8 @@ async function save() {
   saving.value = true
   try {
     if (tab.value === 'page') {
-      page.value = await api.savePageSettings(page.value)
+      page.value = await api.savePageSettings({ ...page.value, refreshAnnouncement: refreshAnnouncement.value })
+      refreshAnnouncement.value = false
       await store.bootstrap()
     }
     if (tab.value === 'security' && security.value) {
@@ -134,7 +156,10 @@ function moveResponseField(index: number, direction: -1 | 1) {
       <Card v-for="[category, fields] in pageCategories" :key="category" class="p-5 shadow-none">
         <div class="mb-5 flex items-center gap-3"><span class="grid size-9 place-items-center rounded-lg bg-muted"><ServerCog class="size-4" /></span><h2 class="font-semibold">{{ category }}</h2></div>
         <div class="space-y-5">
-          <ConfigFieldInput v-for="field in fields" :key="field.id" :field="field" v-model="field.value" />
+          <template v-for="field in fields" :key="field.id">
+            <ConfigFieldInput :field="field" v-model="field.value" :channel-options="field.type === 'channelName' ? currentChannelOptions : undefined" />
+            <label v-if="field.id === 'announcement'" class="flex items-start gap-2 rounded-lg border bg-muted/25 p-3 text-sm"><Checkbox v-model="refreshAnnouncement" class="mt-0.5" /><span><span class="font-medium">重新显示公告</span><span class="mt-0.5 block text-xs text-muted-foreground">即使公告内容没有变化，也让访客重新看到一次。</span></span></label>
+          </template>
         </div>
       </Card>
     </div>

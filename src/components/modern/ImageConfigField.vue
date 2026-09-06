@@ -9,7 +9,7 @@ import { api } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import type { ChannelMap, ConfigField, UploadChannelType } from '@/types/api'
 
-const props = defineProps<{ field: ConfigField; modelValue: unknown }>()
+const props = defineProps<{ field: ConfigField; modelValue: unknown; disabled?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 const store = useAppStore()
 const fileInput = ref<HTMLInputElement>()
@@ -38,6 +38,7 @@ async function resolveUploadChannel() {
 }
 
 async function uploadImage(event: Event) {
+  if (props.disabled) return
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
@@ -89,17 +90,17 @@ async function uploadImage(event: Event) {
       <div class="min-w-0 flex-1 space-y-2">
         <div class="relative">
           <Link2 class="absolute left-3 top-3 size-4 text-muted-foreground" />
-          <Input :id="`${field.id}-url`" v-model="value" class="pr-10 pl-9" placeholder="粘贴 https://… 图片链接" />
-          <button v-if="value" type="button" class="focus-ring absolute right-2 top-2 grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" :aria-label="`清除${field.label}`" @click="value = ''">
+          <Input :id="`${field.id}-url`" v-model="value" class="pr-10 pl-9" :disabled="disabled" placeholder="粘贴 https://… 图片链接" />
+          <button v-if="value && !disabled" type="button" class="focus-ring absolute right-2 top-2 grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" :aria-label="`清除${field.label}`" @click="value = ''">
             <X class="size-3.5" />
           </button>
         </div>
         <div class="flex items-center gap-3">
-          <Button type="button" variant="outline" size="sm" :disabled="uploading" @click="fileInput?.click()">
+          <Button type="button" variant="outline" size="sm" :disabled="uploading || disabled" @click="fileInput?.click()">
             <LoaderCircle v-if="uploading" class="animate-spin" /><Upload v-else />
             {{ uploading ? `上传中 ${progress}%` : '上传图片' }}
           </Button>
-          <span class="text-xs text-muted-foreground">也可以直接粘贴已有图片地址</span>
+          <span class="text-xs text-muted-foreground">{{ disabled ? '由环境变量提供，无法在此修改' : '也可以直接粘贴已有图片地址' }}</span>
         </div>
         <input ref="fileInput" type="file" accept="image/*,.ico" class="sr-only" @change="uploadImage" />
       </div>
