@@ -42,6 +42,10 @@ export const api = {
   async directories() {
     return (await http.get<{ directories?: string[]; tree?: unknown }>('/api/directoryTree')).data
   },
+  async fetchRemoteResource(url: string) {
+    const response = await http.post<Blob>('/api/fetchRes', { url }, { responseType: 'blob', timeout: 0 })
+    return { blob: response.data, disposition: String(response.headers['content-disposition'] || '') }
+  },
   async upload(
     file: File,
     options: {
