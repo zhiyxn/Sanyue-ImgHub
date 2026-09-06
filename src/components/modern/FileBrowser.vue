@@ -48,6 +48,7 @@ const excludeTags = ref('')
 const sort = ref<'dateDesc' | 'nameAsc'>('dateDesc')
 const batchPanel = ref<'tags' | 'move'>()
 const batchValue = ref('')
+const batchTagAction = ref<'add' | 'remove'>('add')
 const batchBusy = ref(false)
 const listTypeOpen = ref(false)
 const pendingListType = ref<'Block' | 'White'>('Block')
@@ -241,8 +242,8 @@ async function executeBatchPanel() {
   batchBusy.value = true
   try {
     if (batchPanel.value === 'move') await api.batchMove([...selected.value], value.replace(/^\/+|\/+$/g, ''))
-    else await api.batchTags([...selected.value], 'add', [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))])
-    toast.success(t(batchPanel.value === 'move' ? 'modern.files.moved' : 'modern.files.tagsAdded'))
+    else await api.batchTags([...selected.value], batchTagAction.value, [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))])
+    toast.success(t(batchPanel.value === 'move' ? 'modern.files.moved' : batchTagAction.value === 'add' ? 'modern.files.tagsAdded' : 'modern.files.tagsRemoved'))
     batchPanel.value = undefined
     batchValue.value = ''
     await load()
@@ -323,7 +324,7 @@ onMounted(() => {
     </Card>
 
     <div v-if="mode === 'admin' && hasSelection" class="flex items-center justify-between rounded-xl border bg-card p-3 shadow-sm">
-      <div class="min-w-0"><p class="pl-1 text-sm">{{ t('modern.files.selected', { count: selected.size }) }}</p><div v-if="batchPanel" class="mt-2 flex max-w-lg gap-2"><Input v-if="batchPanel === 'move'" v-model="batchValue" class="h-9" :placeholder="t('modern.files.destination')" @keyup.enter="executeBatchPanel" /><TagAutocompleteInput v-else v-model="batchValue" class="min-w-64" :placeholder="t('modern.files.tagsPlaceholder')" /><Button size="sm" :disabled="batchBusy" @click="executeBatchPanel"><LoaderCircle v-if="batchBusy" class="animate-spin" />{{ t('modern.files.execute') }}</Button></div></div>
+      <div class="min-w-0"><p class="pl-1 text-sm">{{ t('modern.files.selected', { count: selected.size }) }}</p><div v-if="batchPanel" class="mt-2 flex max-w-2xl flex-wrap gap-2"><Input v-if="batchPanel === 'move'" v-model="batchValue" class="h-9 min-w-64 flex-1" :placeholder="t('modern.files.destination')" @keyup.enter="executeBatchPanel" /><template v-else><Select v-model="batchTagAction"><SelectTrigger class="h-9 w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="add">{{ t('modern.files.addTags') }}</SelectItem><SelectItem value="remove">{{ t('modern.files.removeTags') }}</SelectItem></SelectContent></Select><TagAutocompleteInput v-model="batchValue" class="min-w-64 flex-1" :placeholder="t('modern.files.tagsPlaceholder')" /></template><Button size="sm" :disabled="batchBusy" @click="executeBatchPanel"><LoaderCircle v-if="batchBusy" class="animate-spin" />{{ t('modern.files.execute') }}</Button></div></div>
       <div class="flex flex-wrap justify-end gap-1"><Button variant="ghost" size="sm" :disabled="batchBusy" @click="copySelected"><Clipboard />{{ t('modern.files.copy') }}</Button><Button variant="ghost" size="sm" :disabled="batchBusy" @click="downloadSelected"><Download />{{ t('modern.files.download') }}</Button><Button variant="ghost" size="sm" @click="batchPanel = batchPanel === 'tags' ? undefined : 'tags'; batchValue = ''"><Tags />{{ t('modern.files.tags') }}</Button><Button variant="ghost" size="sm" @click="batchPanel = batchPanel === 'move' ? undefined : 'move'; batchValue = ''"><FolderInput />{{ t('modern.files.move') }}</Button><Button variant="ghost" size="sm" @click="askListType('White')"><CheckCircle2 />{{ t('modern.files.allowList') }}</Button><Button variant="ghost" size="sm" @click="askListType('Block')"><Ban />{{ t('modern.files.blockList') }}</Button><Button variant="ghost" size="sm" @click="selected = new Set(); batchPanel = undefined">{{ t('modern.files.cancel') }}</Button><Button variant="destructive" size="sm" @click="deleteOpen = true"><Trash2 />{{ t('modern.files.delete') }}</Button></div>
     </div>
 

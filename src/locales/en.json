@@ -1030,6 +1030,9 @@
       "needTag": "Enter at least one tag",
       "moved": "Files moved",
       "tagsAdded": "Tags added",
+      "tagsRemoved": "Tags removed",
+      "addTags": "Add tags",
+      "removeTags": "Remove tags",
       "batchFailed": "Batch operation failed",
       "deleteTitle": "Delete selected files?",
       "deleteDescription": "This permanently deletes {count} files and their stored objects. This cannot be undone.",
@@ -1278,6 +1281,22 @@
       "uploadImage": "Upload image",
       "fixedHint": "Provided by an environment variable and cannot be changed here",
       "urlHint": "You can also paste an existing image URL"
+    },
+    "uploadHistory": {
+      "title": "Upload history",
+      "description": "{count} recent uploads saved in this browser.",
+      "clear": "Clear history",
+      "close": "Close",
+      "copy": "Copy link",
+      "open": "Open file",
+      "remove": "Remove record",
+      "loadMore": "Load more",
+      "empty": "No upload history",
+      "emptyHint": "Successfully uploaded files will appear here.",
+      "copied": "Link copied",
+      "cleared": "Upload history cleared",
+      "clearTitle": "Clear upload history?",
+      "clearDescription": "This only removes history from this browser. Uploaded files are not deleted."
     },
     "storage": {
       "s3Compatible": "S3-compatible storage",

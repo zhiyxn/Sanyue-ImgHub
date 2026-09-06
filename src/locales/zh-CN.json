@@ -1038,6 +1038,9 @@
       "needTag": "请输入至少一个标签",
       "moved": "文件已批量移动",
       "tagsAdded": "标签已批量添加",
+      "tagsRemoved": "标签已批量移除",
+      "addTags": "添加标签",
+      "removeTags": "移除标签",
       "batchFailed": "批量操作失败",
       "deleteTitle": "删除所选文件？",
       "deleteDescription": "将永久删除 {count} 个文件及其存储对象，此操作无法撤销。",
@@ -1286,6 +1289,22 @@
       "uploadImage": "上传图片",
       "fixedHint": "由环境变量提供，无法在此修改",
       "urlHint": "也可以直接粘贴已有图片地址"
+    },
+    "uploadHistory": {
+      "title": "上传历史",
+      "description": "本机保存的最近上传记录，共 {count} 条。",
+      "clear": "清空历史",
+      "close": "关闭",
+      "copy": "复制链接",
+      "open": "打开文件",
+      "remove": "移除记录",
+      "loadMore": "加载更多",
+      "empty": "暂无上传历史",
+      "emptyHint": "上传成功的文件会显示在这里。",
+      "copied": "链接已复制",
+      "cleared": "上传历史已清空",
+      "clearTitle": "清空上传历史？",
+      "clearDescription": "这只会删除当前浏览器中的历史记录，不会删除已上传文件。"
     },
     "storage": {
       "s3Compatible": "S3 兼容存储",

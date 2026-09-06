@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Check, ChevronDown, Clipboard, ClipboardPaste, File as FileIcon, Folder, Link2, LoaderCircle, RotateCcw, Trash2, UploadCloud, X } from '@lucide/vue'
+import { Check, ChevronDown, Clipboard, ClipboardPaste, File as FileIcon, Folder, History, Link2, LoaderCircle, RotateCcw, Trash2, UploadCloud, X } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -16,6 +16,7 @@ import { api } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { copyText, formatBytes } from '@/lib/utils'
 import { formatUploadedLink, processImageForUpload } from '@/lib/upload-processing'
+import UploadHistoryDialog, { type UploadHistoryItem } from './UploadHistoryDialog.vue'
 import type { LinkFormat } from '@/lib/upload-processing'
 import type { ChannelMap, UploadChannelType } from '@/types/api'
 
@@ -74,6 +75,7 @@ const fetchingUrls = ref(false)
 const expanded = ref(false)
 const tasks = ref<UploadTask[]>([])
 const running = ref(false)
+const historyOpen = ref(false)
 const controllers = new Map<string, AbortController>()
 
 const channelLabels = computed<Record<UploadChannelType, string>>(() => ({
@@ -205,6 +207,14 @@ function removeTask(task: UploadTask) {
   tasks.value = tasks.value.filter((item) => item.id !== task.id)
 }
 
+function recordHistory(task: UploadTask) {
+  if (!task.result) return
+  let history: UploadHistoryItem[] = []
+  try { history = JSON.parse(localStorage.getItem('uploadHistory') || '[]') as UploadHistoryItem[] } catch { history = [] }
+  history.unshift({ name: task.file.name, url: task.result, time: Date.now() })
+  localStorage.setItem('uploadHistory', JSON.stringify(history.slice(0, 500)))
+}
+
 async function uploadOne(task: UploadTask) {
   const controller = new AbortController()
   controllers.set(task.id, controller)
@@ -228,6 +238,7 @@ async function uploadOne(task: UploadTask) {
       task.result = uploaded?.publicUrl || uploaded?.src || task.externalUrl
       task.progress = 100
       task.status = 'done'
+      recordHistory(task)
       return
     }
     const uploadFile = await processImageForUpload(task.file, {
@@ -254,6 +265,7 @@ async function uploadOne(task: UploadTask) {
     task.result = uploaded.publicUrl || uploaded.src
     task.progress = 100
     task.status = 'done'
+    recordHistory(task)
   } catch (error) {
     if (controller.signal.aborted) return
     task.status = 'error'
@@ -351,6 +363,7 @@ async function copyAllResults() {
     </div>
 
     <aside class="space-y-4">
+      <Button variant="outline" class="w-full justify-start" @click="historyOpen = true"><History />{{ t('modern.uploadHistory.title') }}</Button>
       <Card class="p-5 shadow-none">
         <div class="mb-5">
           <h2 class="font-semibold">{{ t('modern.upload.settings') }}</h2>
@@ -418,4 +431,5 @@ async function copyAllResults() {
       <p class="px-2 text-center text-xs leading-5 text-muted-foreground">{{ t('modern.upload.directHint') }}</p>
     </aside>
   </div>
+  <UploadHistoryDialog v-model:open="historyOpen" />
 </template>
