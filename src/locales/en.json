@@ -957,6 +957,8 @@
       "description": "Browse content made public by the site owner."
     },
     "files": {
+      "pageEyebrow": "Library",
+      "pageDescription": "Browse, search, copy, and delete files in storage.",
       "root": "Root",
       "search": "Search files…",
       "clearSearch": "Clear search",

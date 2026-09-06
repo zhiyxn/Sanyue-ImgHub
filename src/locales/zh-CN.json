@@ -965,6 +965,8 @@
       "description": "浏览站点所有者允许公开访问的内容。"
     },
     "files": {
+      "pageEyebrow": "文件库",
+      "pageDescription": "查看、搜索、复制和删除存储中的文件。",
       "root": "根目录",
       "search": "搜索文件…",
       "clearSearch": "清除搜索",
