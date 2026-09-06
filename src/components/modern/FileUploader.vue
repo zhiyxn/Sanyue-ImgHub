@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 import { copyText, formatBytes } from '@/lib/utils'
@@ -54,6 +55,11 @@ const availableChannels = computed(() =>
 )
 const channelNames = computed(() => channels.value[channel.value] || [])
 const completedCount = computed(() => tasks.value.filter((task) => task.status === 'done').length)
+
+function changeChannel(value: string | number | undefined) {
+  channel.value = value as UploadChannelType
+  channelName.value = channelNames.value[0]?.name || ''
+}
 
 onMounted(async () => {
   try {
@@ -210,18 +216,21 @@ async function copyResult(task: UploadTask) {
         <div class="space-y-4">
           <div class="space-y-2">
             <Label for="channel">存储渠道</Label>
-            <div class="relative">
-              <select id="channel" v-model="channel" class="focus-ring h-10 w-full appearance-none rounded-lg border bg-background px-3 pr-9 text-sm" @change="channelName = channelNames[0]?.name || ''">
-                <option v-for="item in availableChannels" :key="item" :value="item">{{ channelLabels[item] }}</option>
-              </select>
-              <ChevronDown class="pointer-events-none absolute right-3 top-3 size-4 text-muted-foreground" />
-            </div>
+            <Select :model-value="channel" @update:model-value="changeChannel">
+              <SelectTrigger id="channel"><SelectValue placeholder="选择存储渠道" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="item in availableChannels" :key="item" :value="item">{{ channelLabels[item] }}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div v-if="channelNames.length > 1" class="space-y-2">
             <Label for="channelName">渠道名称</Label>
-            <select id="channelName" v-model="channelName" class="focus-ring h-10 w-full rounded-lg border bg-background px-3 text-sm">
-              <option v-for="item in channelNames" :key="item.name" :value="item.name">{{ item.name }}</option>
-            </select>
+            <Select v-model="channelName">
+              <SelectTrigger id="channelName"><SelectValue placeholder="选择渠道" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="item in channelNames" :key="item.name" :value="item.name">{{ item.name }}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div class="space-y-2">
             <Label for="folder">上传目录</Label>
@@ -233,9 +242,15 @@ async function copyResult(task: UploadTask) {
           <div v-if="expanded" class="space-y-4 border-t pt-4">
             <div class="space-y-2">
               <Label for="nameType">文件命名</Label>
-              <select id="nameType" v-model="uploadNameType" class="focus-ring h-10 w-full rounded-lg border bg-background px-3 text-sm">
-                <option value="default">默认</option><option value="index">仅前缀</option><option value="origin">保留原名</option><option value="short">短链接</option>
-              </select>
+              <Select v-model="uploadNameType">
+                <SelectTrigger id="nameType"><SelectValue placeholder="选择命名方式" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">默认</SelectItem>
+                  <SelectItem value="index">仅前缀</SelectItem>
+                  <SelectItem value="origin">保留原名</SelectItem>
+                  <SelectItem value="short">短链接</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div class="flex items-center justify-between gap-4">
               <div><p class="text-sm font-medium">失败自动换线</p><p class="text-xs text-muted-foreground">当前渠道失败时尝试备用渠道</p></div>

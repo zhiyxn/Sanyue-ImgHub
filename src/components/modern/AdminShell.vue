@@ -78,7 +78,7 @@ async function logout() {
     >
       <div class="flex h-16 items-center gap-2 border-b px-3" :class="collapsed && 'lg:justify-center'">
         <RouterLink to="/dashboard" class="focus-ring min-w-0 rounded-lg" @click="mobileOpen = false">
-          <BrandMark :name="store.siteTitle" size="sm" :show-name="!collapsed" />
+          <BrandMark :name="store.siteTitle" :src="store.config.logoUrl" size="sm" :show-name="!collapsed" />
         </RouterLink>
         <Button class="ml-auto lg:hidden" variant="ghost" size="icon" aria-label="关闭导航" @click="mobileOpen = false">
           <X />

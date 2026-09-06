@@ -43,7 +43,7 @@ async function logout() {
     <header class="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div class="mx-auto flex h-16 max-w-[1440px] items-center gap-4 px-4 sm:px-6">
         <RouterLink to="/" class="focus-ring rounded-lg">
-          <BrandMark :name="store.siteTitle" />
+          <BrandMark :name="store.siteTitle" :src="store.config.logoUrl" />
         </RouterLink>
 
         <nav v-if="admin" class="ml-5 hidden items-center gap-1 md:flex">

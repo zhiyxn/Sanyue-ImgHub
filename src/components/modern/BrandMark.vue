@@ -1,5 +1,5 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ size?: 'sm' | 'md' | 'lg'; showName?: boolean; name?: string }>(), {
+withDefaults(defineProps<{ size?: 'sm' | 'md' | 'lg'; showName?: boolean; name?: string; src?: string }>(), {
   size: 'md',
   showName: true,
   name: 'ImgHub',
@@ -8,7 +8,15 @@ withDefaults(defineProps<{ size?: 'sm' | 'md' | 'lg'; showName?: boolean; name?:
 
 <template>
   <span class="inline-flex items-center gap-2.5">
+    <img
+      v-if="src"
+      :src="src"
+      alt=""
+      class="shrink-0 rounded-lg object-contain"
+      :class="{ 'size-7': size === 'sm', 'size-9': size === 'md', 'size-12': size === 'lg' }"
+    />
     <svg
+      v-else
       :class="{ 'size-7': size === 'sm', 'size-9': size === 'md', 'size-12': size === 'lg' }"
       viewBox="0 0 64 64"
       fill="none"

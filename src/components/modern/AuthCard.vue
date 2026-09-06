@@ -46,7 +46,7 @@ async function submit() {
     <div class="surface-grid pointer-events-none absolute inset-0 opacity-65" />
     <div class="absolute right-4 top-4"><ThemeToggle /></div>
     <div class="relative w-full max-w-sm">
-      <div class="mb-7 flex justify-center"><BrandMark size="lg" :name="store.siteTitle" /></div>
+      <div class="mb-7 flex justify-center"><BrandMark size="lg" :name="store.siteTitle" :src="store.config.logoUrl" /></div>
       <Card class="p-6 sm:p-7">
         <div class="mb-6">
           <h1 class="text-xl font-semibold tracking-tight">{{ admin ? '管理端登录' : '访问认证' }}</h1>

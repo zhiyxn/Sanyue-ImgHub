@@ -12,8 +12,11 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/services/api'
 import type { ConfigField, PageSettings, SecuritySettings } from '@/types/api'
+import { useAppStore } from '@/stores/app'
 
 type Tab = 'page' | 'security' | 'storage'
 const tab = ref<Tab>('page')
@@ -22,6 +25,7 @@ const saving = ref(false)
 const page = ref<PageSettings>({ config: [] })
 const security = ref<SecuritySettings>()
 const upload = ref<Record<string, unknown>>({})
+const store = useAppStore()
 
 const tabs = [
   { id: 'page' as const, label: '页面', icon: Globe2 },
@@ -64,7 +68,10 @@ onMounted(async () => {
 async function save() {
   saving.value = true
   try {
-    if (tab.value === 'page') page.value = await api.savePageSettings(page.value)
+    if (tab.value === 'page') {
+      page.value = await api.savePageSettings(page.value)
+      await store.bootstrap()
+    }
     if (tab.value === 'security' && security.value) await api.saveSecuritySettings(security.value)
     toast.success('设置已保存')
   } catch (error) {
@@ -82,15 +89,17 @@ async function save() {
       <Button v-if="tab !== 'storage'" :disabled="saving || loading" @click="save"><LoaderCircle v-if="saving" class="animate-spin" /><Save v-else />{{ saving ? '保存中…' : '保存更改' }}</Button>
     </div>
 
-    <div class="mb-6 inline-flex rounded-xl border bg-muted/35 p-1">
-      <button v-for="item in tabs" :key="item.id" class="focus-ring inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm transition" :class="tab === item.id ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'" @click="tab = item.id">
-        <component :is="item.icon" class="size-4" />{{ item.label }}
-      </button>
-    </div>
+    <Tabs v-model="tab" class="mb-6">
+      <TabsList>
+        <TabsTrigger v-for="item in tabs" :key="item.id" :value="item.id">
+          <component :is="item.icon" class="size-4" />{{ item.label }}
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
 
-    <div v-if="loading" class="grid gap-4 lg:grid-cols-2"><Skeleton v-for="index in 4" :key="index" class="h-64 rounded-xl" /></div>
+    <div v-if="loading" class="max-w-5xl space-y-4"><Skeleton v-for="index in 4" :key="index" class="h-64 rounded-xl" /></div>
 
-    <div v-else-if="tab === 'page'" class="grid items-start gap-5 lg:grid-cols-2">
+    <div v-else-if="tab === 'page'" class="max-w-5xl space-y-5">
       <Card v-for="[category, fields] in pageCategories" :key="category" class="p-5 shadow-none">
         <div class="mb-5 flex items-center gap-3"><span class="grid size-9 place-items-center rounded-lg bg-muted"><ServerCog class="size-4" /></span><h2 class="font-semibold">{{ category }}</h2></div>
         <div class="space-y-5">
@@ -99,12 +108,12 @@ async function save() {
       </Card>
     </div>
 
-    <div v-else-if="tab === 'security' && security" class="grid items-start gap-5 lg:grid-cols-2">
+    <div v-else-if="tab === 'security' && security" class="max-w-5xl space-y-5">
       <Card class="p-5 shadow-none">
         <h2 class="font-semibold">普通用户认证</h2>
         <p class="mt-1 text-xs text-muted-foreground">保护上传页和需要用户权限的接口。</p>
         <div class="mt-5 space-y-2"><Label for="user-password">访问密码</Label><Input id="user-password" v-model="security.auth.user.authCode" type="password" :placeholder="security.auth.user._hasPassword ? '已设置，留空保持不变' : '未设置'" autocomplete="new-password" /></div>
-        <label class="mt-4 flex items-center gap-2 text-sm"><input v-model="security.auth.user._clear" type="checkbox" class="size-4 accent-amber-500" />清除现有普通用户密码</label>
+        <label class="mt-4 flex items-center gap-2 text-sm"><Checkbox v-model="security.auth.user._clear" />清除现有普通用户密码</label>
       </Card>
       <Card class="p-5 shadow-none">
         <h2 class="font-semibold">管理员认证</h2>
@@ -112,10 +121,10 @@ async function save() {
         <div class="mt-5 space-y-4">
           <div class="space-y-2"><Label for="admin-user">管理员用户名</Label><Input id="admin-user" v-model="security.auth.admin.adminUsername" autocomplete="username" /></div>
           <div class="space-y-2"><Label for="admin-password">新密码</Label><Input id="admin-password" v-model="security.auth.admin.adminPassword" type="password" :placeholder="security.auth.admin._hasPassword ? '已设置，留空保持不变' : '未设置'" autocomplete="new-password" /></div>
-          <label class="flex items-center gap-2 text-sm"><input v-model="security.auth.admin._clear" type="checkbox" class="size-4 accent-amber-500" />清除管理员账号和密码</label>
+          <label class="flex items-center gap-2 text-sm"><Checkbox v-model="security.auth.admin._clear" />清除管理员账号和密码</label>
         </div>
       </Card>
-      <Card class="p-5 shadow-none lg:col-span-2">
+      <Card class="p-5 shadow-none">
         <h2 class="font-semibold">会话与访问策略</h2>
         <div class="mt-5 grid gap-5 sm:grid-cols-2">
           <div class="space-y-2"><Label for="domains">允许的来源域名</Label><Input id="domains" v-model="security.access.allowedDomains" placeholder="example.com, img.example.com" /></div>
@@ -128,7 +137,7 @@ async function save() {
       </Card>
     </div>
 
-    <div v-else-if="tab === 'storage'" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div v-else-if="tab === 'storage'" class="max-w-5xl space-y-4">
       <Card v-for="group in storageGroups" :key="group.key" class="p-5 shadow-none">
         <div class="flex items-center justify-between"><h2 class="font-semibold capitalize">{{ group.key }}</h2><Badge variant="secondary">{{ group.channels.length }} 个渠道</Badge></div>
         <div class="mt-4 space-y-2">

@@ -27,6 +27,7 @@ import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/services/api'
 import IndexRebuilder from '@/utils/indexRebuilder.js'
 import BackupGenerator from '@/utils/backupGenerator.js'
@@ -446,16 +447,22 @@ onBeforeUnmount(() => {
             <p class="mt-1 text-xs text-muted-foreground">所选时间段共 {{ formatNumber(trendTotal) }} 次上传</p>
           </div>
           <div class="flex gap-2">
-            <select v-model.number="rangeDays" class="focus-ring h-9 rounded-lg border bg-background px-3 text-xs" aria-label="趋势时间范围" @change="loadStatus()">
-              <option :value="7">最近 7 天</option>
-              <option :value="14">最近 14 天</option>
-              <option :value="30">最近 30 天</option>
-              <option :value="90">最近 90 天</option>
-            </select>
-            <select v-model="trendGroupBy" class="focus-ring h-9 rounded-lg border bg-background px-3 text-xs" aria-label="趋势分组">
-              <option value="channel">按渠道类型</option>
-              <option value="channelName">按渠道名称</option>
-            </select>
+            <Select v-model="rangeDays" @update:model-value="loadStatus()">
+              <SelectTrigger class="h-9 w-32 text-xs" aria-label="趋势时间范围"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem :value="7">最近 7 天</SelectItem>
+                <SelectItem :value="14">最近 14 天</SelectItem>
+                <SelectItem :value="30">最近 30 天</SelectItem>
+                <SelectItem :value="90">最近 90 天</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select v-model="trendGroupBy">
+              <SelectTrigger class="h-9 w-32 text-xs" aria-label="趋势分组"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="channel">按渠道类型</SelectItem>
+                <SelectItem value="channelName">按渠道名称</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div class="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_190px]">

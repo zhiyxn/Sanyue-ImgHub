@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import EmptyState from './EmptyState.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import FileActionsDialog from './FileActionsDialog.vue'
@@ -22,7 +23,7 @@ const loading = ref(true)
 const error = ref('')
 const data = ref<FileListResponse>({ files: [], directories: [], totalCount: 0, returnedCount: 0 })
 const search = ref('')
-const type = ref('')
+const type = ref('all')
 const view = ref<'grid' | 'list'>('grid')
 const selected = ref(new Set<string>())
 const deleteOpen = ref(false)
@@ -75,7 +76,7 @@ async function load() {
       start: currentPage.value * pageSize,
       count: pageSize,
       search: search.value || undefined,
-      type: props.mode === 'public' ? type.value || undefined : undefined,
+      type: props.mode === 'public' && type.value !== 'all' ? type.value : undefined,
     }
     data.value = props.mode === 'admin' ? await api.adminList(params) : await api.publicList(params)
   } catch (reason) {
@@ -87,7 +88,7 @@ async function load() {
 
 function openDirectory(directory: string) {
   const cleaned = directory.replace(/^\/+|\/+$/g, '')
-  router.push(props.mode === 'admin' ? { name: 'dashboard', query: { dir: cleaned } } : { name: 'publicBrowse', params: { dir: cleaned } })
+  router.push(props.mode === 'admin' ? { name: 'dashboardFiles', query: { dir: cleaned } } : { name: 'publicBrowse', params: { dir: cleaned } })
 }
 
 function goBreadcrumb(index: number) {
@@ -158,9 +159,16 @@ onMounted(load)
           <Input v-model="search" class="pl-9" placeholder="搜索文件…" />
           <button v-if="search" class="absolute right-3 top-3" aria-label="清除搜索" @click="search = ''"><X class="size-4 text-muted-foreground" /></button>
         </div>
-        <select v-if="mode === 'public'" v-model="type" class="focus-ring h-10 rounded-lg border bg-background px-3 text-sm">
-          <option value="">全部类型</option><option value="image">图片</option><option value="video">视频</option><option value="audio">音频</option><option value="other">其他</option>
-        </select>
+        <Select v-if="mode === 'public'" v-model="type">
+          <SelectTrigger class="w-32"><SelectValue placeholder="文件类型" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部类型</SelectItem>
+            <SelectItem value="image">图片</SelectItem>
+            <SelectItem value="video">视频</SelectItem>
+            <SelectItem value="audio">音频</SelectItem>
+            <SelectItem value="other">其他</SelectItem>
+          </SelectContent>
+        </Select>
         <div class="flex rounded-lg border p-0.5">
           <Button :variant="view === 'grid' ? 'secondary' : 'ghost'" size="icon" class="size-8" aria-label="网格" @click="view = 'grid'"><Grid2X2 /></Button>
           <Button :variant="view === 'list' ? 'secondary' : 'ghost'" size="icon" class="size-8" aria-label="列表" @click="view = 'list'"><List /></Button>
