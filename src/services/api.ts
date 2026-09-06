@@ -75,6 +75,15 @@ export const api = {
   async adminList(params: Record<string, string | number | boolean | undefined>) {
     return (await http.get<FileListResponse>('/api/manage/list', { params })).data
   },
+  async systemInfo(params: Record<string, string | number | undefined>) {
+    return (await http.get<Record<string, unknown>>('/api/manage/list', { params: { action: 'info', ...params } })).data
+  },
+  async indexStorageStats() {
+    return (await http.get<Record<string, unknown>>('/api/manage/list', { params: { action: 'index-storage-stats' } })).data
+  },
+  async quotaStats() {
+    return (await http.get<Record<string, unknown>>('/api/manage/quota')).data
+  },
   async publicList(params: Record<string, string | number | boolean | undefined>) {
     return (await http.get<FileListResponse>('/api/public/list', { params })).data
   },

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { Dice5, Globe2, LoaderCircle, RadioTower, Save, ShieldCheck } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import AppShell from '@/components/modern/AppShell.vue'
+import AdminShell from '@/components/modern/AdminShell.vue'
 import PageHeading from '@/components/modern/PageHeading.vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -50,7 +50,7 @@ async function save() {
 </script>
 
 <template>
-  <AppShell admin>
+  <AdminShell title="访问规则" description="公开浏览、随机图片 API、WebDAV 与遥测">
     <div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <PageHeading eyebrow="Access" title="访问规则" description="控制公开浏览、随机图片接口、WebDAV 和遥测。" />
       <Button :disabled="saving || loading || !settings" @click="save"><LoaderCircle v-if="saving" class="animate-spin" /><Save v-else />{{ saving ? '保存中…' : '保存更改' }}</Button>
@@ -78,5 +78,5 @@ async function save() {
         </div>
       </Card>
     </div>
-  </AppShell>
+  </AdminShell>
 </template>

@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { Database, Globe2, KeyRound, LoaderCircle, Save, ServerCog } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import AppShell from '@/components/modern/AppShell.vue'
+import AdminShell from '@/components/modern/AdminShell.vue'
 import PageHeading from '@/components/modern/PageHeading.vue'
 import ConfigFieldInput from '@/components/modern/ConfigFieldInput.vue'
 import { Button } from '@/components/ui/button'
@@ -76,7 +76,7 @@ async function save() {
 </script>
 
 <template>
-  <AppShell admin>
+  <AdminShell title="系统设置" description="站点外观、认证策略与存储渠道">
     <div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <PageHeading eyebrow="Configuration" title="系统设置" description="管理站点外观、登录认证和存储渠道状态。" />
       <Button v-if="tab !== 'storage'" :disabled="saving || loading" @click="save"><LoaderCircle v-if="saving" class="animate-spin" /><Save v-else />{{ saving ? '保存中…' : '保存更改' }}</Button>
@@ -139,5 +139,5 @@ async function save() {
         </div>
       </Card>
     </div>
-  </AppShell>
+  </AdminShell>
 </template>

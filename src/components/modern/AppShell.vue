@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { FolderOpen, LogOut, Menu, Settings, ShieldCheck, UploadCloud } from '@lucide/vue'
+import { FolderOpen, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, UploadCloud } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import BrandMark from './BrandMark.vue'
@@ -63,8 +63,8 @@ async function logout() {
           <Button v-if="!admin" variant="ghost" size="sm" as-child @click="router.push('/browse')">
             <FolderOpen /> 浏览
           </Button>
-          <Button v-if="!admin && isAdminSession" variant="ghost" size="sm" @click="router.push('/dashboard')">
-            <Settings /> 管理
+          <Button v-if="!admin" variant="ghost" size="sm" @click="router.push(isAdminSession ? '/dashboard' : '/adminLogin')">
+            <LayoutDashboard /> 管理后台
           </Button>
           <ThemeToggle />
           <Button v-if="store.session.valid" variant="ghost" size="icon" aria-label="退出登录" @click="logout">
