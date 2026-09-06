@@ -207,7 +207,23 @@ export interface SecuritySettings {
     userSessionMaxAge: number
     adminSessionMaxAge: number
   }
-  upload: Record<string, unknown>
+  upload: {
+    moderate: {
+      enabled: boolean
+      channel: 'moderatecontent.com' | 'nsfwjs'
+      moderateContentApiKey: string
+      nsfwApiPath: string
+    }
+    ipQuery: {
+      enabled: boolean
+      channel: 'customApi'
+      customApi: {
+        url: string
+        params: Array<{ key: string; value: string }>
+        responseFields: string[]
+      }
+    }
+  }
 }
 
 export interface UploadResponse {
