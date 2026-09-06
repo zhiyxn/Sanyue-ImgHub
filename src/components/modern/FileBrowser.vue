@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Ban, Check, CheckCircle2, ChevronRight, Clipboard, Download, Ellipsis, File, FileAudio, FileText, FileVideo, Folder, FolderInput, Grid2X2, Image, List, LoaderCircle, Search, SlidersHorizontal, Tags, Trash2, X } from '@lucide/vue'
 import { toast } from 'vue-sonner'
@@ -20,6 +21,7 @@ import type { ChannelMap, FileListResponse, FileRecord } from '@/types/api'
 const props = withDefaults(defineProps<{ mode?: 'admin' | 'public' }>(), { mode: 'admin' })
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const loading = ref(true)
 const error = ref('')
 const data = ref<FileListResponse>({ files: [], directories: [], totalCount: 0, returnedCount: 0 })
@@ -118,7 +120,7 @@ async function load() {
     }
     data.value = props.mode === 'admin' ? await api.adminList(params) : await api.publicList(params)
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '无法读取文件列表'
+    error.value = reason instanceof Error ? reason.message : t('modern.files.loadFailed')
   } finally {
     loading.value = false
   }
@@ -142,7 +144,7 @@ function toggleSelect(name: string) {
 
 async function copyLink(file: FileRecord) {
   await copyText(fileUrl(file))
-  toast.success('文件链接已复制')
+  toast.success(t('modern.files.linkCopied'))
 }
 
 function openActions(file: FileRecord) {
@@ -155,11 +157,11 @@ async function confirmDelete() {
   try {
     if (selected.value.size === 1) await api.deleteFile([...selected.value][0]!)
     else await api.batchDelete([...selected.value])
-    toast.success(`已删除 ${selected.value.size} 个文件`)
+    toast.success(t('modern.files.deleted', { count: selected.value.size }))
     deleteOpen.value = false
     await load()
   } catch (reason) {
-    toast.error(reason instanceof Error ? reason.message : '删除失败')
+    toast.error(reason instanceof Error ? reason.message : t('modern.files.deleteFailed'))
   } finally {
     deleting.value = false
   }
@@ -180,7 +182,7 @@ function clearFilters() {
 async function copySelected() {
   const links = data.value.files.filter((file) => selected.value.has(file.name)).map(fileUrl)
   await copyText(links.join('\n'))
-  toast.success(`已复制 ${links.length} 个文件链接`)
+  toast.success(t('modern.files.linksCopied', { count: links.length }))
 }
 
 async function downloadSelected() {
@@ -192,7 +194,7 @@ async function downloadSelected() {
     const used = new Set<string>()
     await Promise.all(files.map(async (file) => {
       const response = await fetch(fileUrl(file), { credentials: 'include' })
-      if (!response.ok) throw new Error(`下载 ${displayName(file)} 失败`)
+      if (!response.ok) throw new Error(t('modern.files.downloadOneFailed', { name: displayName(file) }))
       let name = displayName(file)
       let suffix = 1
       while (used.has(name)) name = `${suffix++}-${displayName(file)}`
@@ -206,9 +208,9 @@ async function downloadSelected() {
     anchor.download = `imghub-files-${Date.now()}.zip`
     anchor.click()
     URL.revokeObjectURL(href)
-    toast.success('压缩包已生成')
+    toast.success(t('modern.files.zipDone'))
   } catch (reason) {
-    toast.error(reason instanceof Error ? reason.message : '批量下载失败')
+    toast.error(reason instanceof Error ? reason.message : t('modern.files.batchDownloadFailed'))
   } finally {
     batchBusy.value = false
   }
@@ -223,11 +225,11 @@ async function confirmListType() {
   batchBusy.value = true
   try {
     await api.batchSetListType([...selected.value], pendingListType.value)
-    toast.success(pendingListType.value === 'Block' ? '已批量加入黑名单' : '已批量加入白名单')
+    toast.success(t(pendingListType.value === 'Block' ? 'modern.files.batchBlocked' : 'modern.files.batchAllowed'))
     listTypeOpen.value = false
     await load()
   } catch (reason) {
-    toast.error(reason instanceof Error ? reason.message : '批量更新名单失败')
+    toast.error(reason instanceof Error ? reason.message : t('modern.files.batchListFailed'))
   } finally {
     batchBusy.value = false
   }
@@ -235,17 +237,17 @@ async function confirmListType() {
 
 async function executeBatchPanel() {
   const value = batchValue.value.trim()
-  if (!value) return toast.error(batchPanel.value === 'move' ? '请输入目标目录' : '请输入至少一个标签')
+  if (!value) return toast.error(t(batchPanel.value === 'move' ? 'modern.files.needDestination' : 'modern.files.needTag'))
   batchBusy.value = true
   try {
     if (batchPanel.value === 'move') await api.batchMove([...selected.value], value.replace(/^\/+|\/+$/g, ''))
     else await api.batchTags([...selected.value], 'add', [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))])
-    toast.success(batchPanel.value === 'move' ? '文件已批量移动' : '标签已批量添加')
+    toast.success(t(batchPanel.value === 'move' ? 'modern.files.moved' : 'modern.files.tagsAdded'))
     batchPanel.value = undefined
     batchValue.value = ''
     await load()
   } catch (reason) {
-    toast.error(reason instanceof Error ? reason.message : '批量操作失败')
+    toast.error(reason instanceof Error ? reason.message : t('modern.files.batchFailed'))
   } finally {
     batchBusy.value = false
   }
@@ -274,7 +276,7 @@ onMounted(() => {
   <section class="space-y-4">
     <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
       <div class="flex min-w-0 items-center gap-1 overflow-x-auto text-sm">
-        <Button variant="ghost" size="sm" @click="openDirectory('')"><Folder /> 根目录</Button>
+        <Button variant="ghost" size="sm" @click="openDirectory('')"><Folder /> {{ t('modern.files.root') }}</Button>
         <template v-for="(item, index) in breadcrumbs" :key="`${item}-${index}`">
           <ChevronRight class="size-4 shrink-0 text-muted-foreground" />
           <Button variant="ghost" size="sm" @click="goBreadcrumb(index)">{{ item }}</Button>
@@ -283,53 +285,53 @@ onMounted(() => {
       <div class="flex flex-1 items-center gap-2 lg:justify-end">
         <div class="relative w-full max-w-sm">
           <Search class="absolute left-3 top-3 size-4 text-muted-foreground" />
-          <Input v-model="search" class="pl-9" placeholder="搜索文件…" />
-          <button v-if="search" class="absolute right-3 top-3" aria-label="清除搜索" @click="search = ''"><X class="size-4 text-muted-foreground" /></button>
+          <Input v-model="search" class="pl-9" :placeholder="t('modern.files.search')" />
+          <button v-if="search" class="absolute right-3 top-3" :aria-label="t('modern.files.clearSearch')" @click="search = ''"><X class="size-4 text-muted-foreground" /></button>
         </div>
         <Select v-if="mode === 'public'" v-model="type">
-          <SelectTrigger class="w-32"><SelectValue placeholder="文件类型" /></SelectTrigger>
+          <SelectTrigger class="w-32"><SelectValue :placeholder="t('modern.files.fileType')" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部类型</SelectItem>
-            <SelectItem value="image">图片</SelectItem>
-            <SelectItem value="video">视频</SelectItem>
-            <SelectItem value="audio">音频</SelectItem>
-            <SelectItem value="other">其他</SelectItem>
+            <SelectItem value="all">{{ t('modern.files.allTypes') }}</SelectItem>
+            <SelectItem value="image">{{ t('modern.files.image') }}</SelectItem>
+            <SelectItem value="video">{{ t('modern.files.video') }}</SelectItem>
+            <SelectItem value="audio">{{ t('modern.files.audio') }}</SelectItem>
+            <SelectItem value="other">{{ t('modern.files.other') }}</SelectItem>
           </SelectContent>
         </Select>
-        <Button v-if="mode === 'admin'" :variant="filtersOpen || hasActiveFilters ? 'secondary' : 'outline'" size="icon" aria-label="高级筛选" @click="filtersOpen = !filtersOpen"><SlidersHorizontal /></Button>
+        <Button v-if="mode === 'admin'" :variant="filtersOpen || hasActiveFilters ? 'secondary' : 'outline'" size="icon" :aria-label="t('modern.files.advancedFilters')" @click="filtersOpen = !filtersOpen"><SlidersHorizontal /></Button>
         <Select v-model="sort">
-          <SelectTrigger class="w-32"><SelectValue placeholder="排序" /></SelectTrigger>
-          <SelectContent><SelectItem value="dateDesc">最新上传</SelectItem><SelectItem value="nameAsc">名称排序</SelectItem></SelectContent>
+          <SelectTrigger class="w-32"><SelectValue :placeholder="t('modern.files.sort')" /></SelectTrigger>
+          <SelectContent><SelectItem value="dateDesc">{{ t('modern.files.latest') }}</SelectItem><SelectItem value="nameAsc">{{ t('modern.files.nameSort') }}</SelectItem></SelectContent>
         </Select>
         <div class="flex rounded-lg border p-0.5">
-          <Button :variant="view === 'grid' ? 'secondary' : 'ghost'" size="icon" class="size-8" aria-label="网格" @click="view = 'grid'"><Grid2X2 /></Button>
-          <Button :variant="view === 'list' ? 'secondary' : 'ghost'" size="icon" class="size-8" aria-label="列表" @click="view = 'list'"><List /></Button>
+          <Button :variant="view === 'grid' ? 'secondary' : 'ghost'" size="icon" class="size-8" :aria-label="t('modern.files.grid')" @click="view = 'grid'"><Grid2X2 /></Button>
+          <Button :variant="view === 'list' ? 'secondary' : 'ghost'" size="icon" class="size-8" :aria-label="t('modern.files.list')" @click="view = 'list'"><List /></Button>
         </div>
       </div>
     </div>
 
     <Card v-if="mode === 'admin' && filtersOpen" class="p-4 shadow-none">
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">存储类型</p><Select v-model="channelFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部类型</SelectItem><SelectItem v-for="item in channelOptions" :key="item.value" :value="item.value">{{ item.label }}</SelectItem></SelectContent></Select></div>
-        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">渠道名称</p><Select v-model="channelNameFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部渠道</SelectItem><SelectItem v-for="item in channelNameOptions" :key="item.value" :value="item.value">{{ item.label }}</SelectItem></SelectContent></Select></div>
-        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">黑白名单</p><Select v-model="listTypeFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部状态</SelectItem><SelectItem value="White">白名单</SelectItem><SelectItem value="Block">黑名单</SelectItem><SelectItem value="None">未设置</SelectItem></SelectContent></Select></div>
-        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">访问状态</p><Select v-model="accessFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部状态</SelectItem><SelectItem value="normal">正常</SelectItem><SelectItem value="blocked">已屏蔽</SelectItem></SelectContent></Select></div>
-        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">审核结果</p><Select v-model="labelFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部结果</SelectItem><SelectItem value="normal">正常</SelectItem><SelectItem value="teen">敏感</SelectItem><SelectItem value="adult">成人</SelectItem></SelectContent></Select></div>
-        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">文件类型</p><Select v-model="fileTypeFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部文件</SelectItem><SelectItem value="image">图片</SelectItem><SelectItem value="video">视频</SelectItem><SelectItem value="audio">音频</SelectItem><SelectItem value="other">其他</SelectItem></SelectContent></Select></div>
+        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">{{ t('modern.files.storageType') }}</p><Select v-model="channelFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{{ t('modern.files.allTypes') }}</SelectItem><SelectItem v-for="item in channelOptions" :key="item.value" :value="item.value">{{ item.label }}</SelectItem></SelectContent></Select></div>
+        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">{{ t('modern.files.channelName') }}</p><Select v-model="channelNameFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{{ t('modern.files.allChannels') }}</SelectItem><SelectItem v-for="item in channelNameOptions" :key="item.value" :value="item.value">{{ item.label }}</SelectItem></SelectContent></Select></div>
+        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">{{ t('modern.files.accessList') }}</p><Select v-model="listTypeFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{{ t('modern.files.allStatuses') }}</SelectItem><SelectItem value="White">{{ t('modern.files.allowList') }}</SelectItem><SelectItem value="Block">{{ t('modern.files.blockList') }}</SelectItem><SelectItem value="None">{{ t('modern.files.unset') }}</SelectItem></SelectContent></Select></div>
+        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">{{ t('modern.files.accessStatus') }}</p><Select v-model="accessFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{{ t('modern.files.allStatuses') }}</SelectItem><SelectItem value="normal">{{ t('modern.files.normal') }}</SelectItem><SelectItem value="blocked">{{ t('modern.files.blocked') }}</SelectItem></SelectContent></Select></div>
+        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">{{ t('modern.files.moderation') }}</p><Select v-model="labelFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{{ t('modern.files.allResults') }}</SelectItem><SelectItem value="normal">{{ t('modern.files.normal') }}</SelectItem><SelectItem value="teen">{{ t('modern.files.sensitive') }}</SelectItem><SelectItem value="adult">{{ t('modern.files.adult') }}</SelectItem></SelectContent></Select></div>
+        <div class="space-y-1.5"><p class="text-xs text-muted-foreground">{{ t('modern.files.fileType') }}</p><Select v-model="fileTypeFilter"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{{ t('modern.files.allFiles') }}</SelectItem><SelectItem value="image">{{ t('modern.files.image') }}</SelectItem><SelectItem value="video">{{ t('modern.files.video') }}</SelectItem><SelectItem value="audio">{{ t('modern.files.audio') }}</SelectItem><SelectItem value="other">{{ t('modern.files.other') }}</SelectItem></SelectContent></Select></div>
       </div>
-      <div class="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]"><Input v-model="includeTags" placeholder="包含标签，逗号分隔" /><Input v-model="excludeTags" placeholder="排除标签，逗号分隔" /><div class="flex gap-2"><Button variant="ghost" :disabled="!hasActiveFilters" @click="clearFilters">清除</Button><Button @click="applyFilters">应用筛选</Button></div></div>
+      <div class="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]"><Input v-model="includeTags" :placeholder="t('modern.files.includeTags')" /><Input v-model="excludeTags" :placeholder="t('modern.files.excludeTags')" /><div class="flex gap-2"><Button variant="ghost" :disabled="!hasActiveFilters" @click="clearFilters">{{ t('modern.files.clear') }}</Button><Button @click="applyFilters">{{ t('modern.files.apply') }}</Button></div></div>
     </Card>
 
     <div v-if="mode === 'admin' && hasSelection" class="flex items-center justify-between rounded-xl border bg-card p-3 shadow-sm">
-      <div class="min-w-0"><p class="pl-1 text-sm">已选择 <strong>{{ selected.size }}</strong> 项</p><div v-if="batchPanel" class="mt-2 flex max-w-lg gap-2"><Input v-if="batchPanel === 'move'" v-model="batchValue" class="h-9" placeholder="目标目录，例如 archive/2026" @keyup.enter="executeBatchPanel" /><TagAutocompleteInput v-else v-model="batchValue" class="min-w-64" placeholder="标签，使用英文逗号分隔" /><Button size="sm" :disabled="batchBusy" @click="executeBatchPanel"><LoaderCircle v-if="batchBusy" class="animate-spin" />执行</Button></div></div>
-      <div class="flex flex-wrap justify-end gap-1"><Button variant="ghost" size="sm" :disabled="batchBusy" @click="copySelected"><Clipboard />复制</Button><Button variant="ghost" size="sm" :disabled="batchBusy" @click="downloadSelected"><Download />下载</Button><Button variant="ghost" size="sm" @click="batchPanel = batchPanel === 'tags' ? undefined : 'tags'; batchValue = ''"><Tags />标签</Button><Button variant="ghost" size="sm" @click="batchPanel = batchPanel === 'move' ? undefined : 'move'; batchValue = ''"><FolderInput />移动</Button><Button variant="ghost" size="sm" @click="askListType('White')"><CheckCircle2 />白名单</Button><Button variant="ghost" size="sm" @click="askListType('Block')"><Ban />黑名单</Button><Button variant="ghost" size="sm" @click="selected = new Set(); batchPanel = undefined">取消</Button><Button variant="destructive" size="sm" @click="deleteOpen = true"><Trash2 />删除</Button></div>
+      <div class="min-w-0"><p class="pl-1 text-sm">{{ t('modern.files.selected', { count: selected.size }) }}</p><div v-if="batchPanel" class="mt-2 flex max-w-lg gap-2"><Input v-if="batchPanel === 'move'" v-model="batchValue" class="h-9" :placeholder="t('modern.files.destination')" @keyup.enter="executeBatchPanel" /><TagAutocompleteInput v-else v-model="batchValue" class="min-w-64" :placeholder="t('modern.files.tagsPlaceholder')" /><Button size="sm" :disabled="batchBusy" @click="executeBatchPanel"><LoaderCircle v-if="batchBusy" class="animate-spin" />{{ t('modern.files.execute') }}</Button></div></div>
+      <div class="flex flex-wrap justify-end gap-1"><Button variant="ghost" size="sm" :disabled="batchBusy" @click="copySelected"><Clipboard />{{ t('modern.files.copy') }}</Button><Button variant="ghost" size="sm" :disabled="batchBusy" @click="downloadSelected"><Download />{{ t('modern.files.download') }}</Button><Button variant="ghost" size="sm" @click="batchPanel = batchPanel === 'tags' ? undefined : 'tags'; batchValue = ''"><Tags />{{ t('modern.files.tags') }}</Button><Button variant="ghost" size="sm" @click="batchPanel = batchPanel === 'move' ? undefined : 'move'; batchValue = ''"><FolderInput />{{ t('modern.files.move') }}</Button><Button variant="ghost" size="sm" @click="askListType('White')"><CheckCircle2 />{{ t('modern.files.allowList') }}</Button><Button variant="ghost" size="sm" @click="askListType('Block')"><Ban />{{ t('modern.files.blockList') }}</Button><Button variant="ghost" size="sm" @click="selected = new Set(); batchPanel = undefined">{{ t('modern.files.cancel') }}</Button><Button variant="destructive" size="sm" @click="deleteOpen = true"><Trash2 />{{ t('modern.files.delete') }}</Button></div>
     </div>
 
     <div v-if="loading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
       <Skeleton v-for="index in 12" :key="index" class="aspect-square rounded-xl" />
     </div>
-    <EmptyState v-else-if="error" title="无法读取文件" :description="error"><Button variant="outline" @click="load">重新加载</Button></EmptyState>
-    <EmptyState v-else-if="!data.files.length && !data.directories.length" title="这里还没有文件" description="上传文件或进入其他目录后，内容会显示在这里。" />
+    <EmptyState v-else-if="error" :title="t('modern.files.loadTitle')" :description="error"><Button variant="outline" @click="load">{{ t('modern.files.reload') }}</Button></EmptyState>
+    <EmptyState v-else-if="!data.files.length && !data.directories.length" :title="t('modern.files.emptyTitle')" :description="t('modern.files.emptyDescription')" />
 
     <template v-else>
       <div v-if="data.directories.length" class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
@@ -344,7 +346,7 @@ onMounted(() => {
           <div class="relative aspect-square overflow-hidden bg-muted">
             <img v-if="isImage(file)" :src="fileUrl(file)" :alt="displayName(file)" loading="lazy" class="size-full object-cover transition duration-300 group-hover:scale-[1.025]" />
             <component :is="fileIcon(file)" v-else class="absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 text-muted-foreground" />
-            <button v-if="mode === 'admin'" class="absolute left-2 top-2 grid size-7 place-items-center rounded-lg border bg-background/90 shadow-sm" :aria-label="selected.has(file.name) ? '取消选择' : '选择文件'" @click="toggleSelect(file.name)">
+            <button v-if="mode === 'admin'" class="absolute left-2 top-2 grid size-7 place-items-center rounded-lg border bg-background/90 shadow-sm" :aria-label="t(selected.has(file.name) ? 'modern.files.unselect' : 'modern.files.selectFile')" @click="toggleSelect(file.name)">
               <span class="grid size-4 place-items-center rounded border" :class="selected.has(file.name) && 'border-primary bg-primary text-primary-foreground'"><Check v-if="selected.has(file.name)" class="size-3" /></span>
             </button>
             <Button variant="secondary" size="icon" class="absolute bottom-2 right-2 size-8 opacity-0 shadow-sm transition group-hover:opacity-100 focus:opacity-100" @click="copyLink(file)"><Clipboard /></Button>
@@ -352,7 +354,7 @@ onMounted(() => {
           </div>
           <div class="p-3">
             <a :href="fileUrl(file)" target="_blank" class="block truncate text-sm font-medium hover:underline">{{ displayName(file) }}</a>
-            <p class="mt-1 truncate text-xs text-muted-foreground">{{ file.metadata?.FileSizeBytes ? formatBytes(file.metadata.FileSizeBytes) : (file.metadata?.FileSize ? `${file.metadata.FileSize} MB` : '未知大小') }}</p>
+            <p class="mt-1 truncate text-xs text-muted-foreground">{{ file.metadata?.FileSizeBytes ? formatBytes(file.metadata.FileSizeBytes) : (file.metadata?.FileSize ? `${file.metadata.FileSize} MB` : t('modern.files.unknownSize')) }}</p>
           </div>
         </Card>
       </div>
@@ -362,20 +364,20 @@ onMounted(() => {
           <button v-if="mode === 'admin'" class="grid size-7 place-items-center" @click="toggleSelect(file.name)"><span class="grid size-4 place-items-center rounded border" :class="selected.has(file.name) && 'border-primary bg-primary text-primary-foreground'"><Check v-if="selected.has(file.name)" class="size-3" /></span></button>
           <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-muted"><component :is="fileIcon(file)" class="size-4" /></span>
           <div class="min-w-0 flex-1"><a :href="fileUrl(file)" target="_blank" class="block truncate text-sm font-medium hover:underline">{{ displayName(file) }}</a><p class="text-xs text-muted-foreground">{{ formatDate(file.metadata?.TimeStamp) }}</p></div>
-          <Badge variant="outline" class="hidden sm:inline-flex">{{ file.metadata?.Channel || '文件' }}</Badge>
+          <Badge variant="outline" class="hidden sm:inline-flex">{{ file.metadata?.Channel || t('modern.files.file') }}</Badge>
           <Button variant="ghost" size="icon" @click="copyLink(file)"><Clipboard /></Button>
           <Button v-if="mode === 'admin'" variant="ghost" size="icon" @click="openActions(file)"><Ellipsis /></Button>
         </div>
       </div>
 
       <div class="flex items-center justify-between">
-        <p class="text-xs text-muted-foreground">共 {{ data.totalCount }} 个文件</p>
-        <div class="flex gap-2"><Button variant="outline" size="sm" :disabled="currentPage === 0" @click="currentPage--; load()">上一页</Button><Button variant="outline" size="sm" :disabled="(currentPage + 1) * pageSize >= data.totalCount" @click="currentPage++; load()">下一页</Button></div>
+        <p class="text-xs text-muted-foreground">{{ t('modern.files.total', { count: data.totalCount }) }}</p>
+        <div class="flex gap-2"><Button variant="outline" size="sm" :disabled="currentPage === 0" @click="currentPage--; load()">{{ t('modern.files.previous') }}</Button><Button variant="outline" size="sm" :disabled="(currentPage + 1) * pageSize >= data.totalCount" @click="currentPage++; load()">{{ t('modern.files.next') }}</Button></div>
       </div>
     </template>
 
-    <ConfirmDialog v-model:open="deleteOpen" title="删除所选文件？" :description="`将永久删除 ${selected.size} 个文件及其存储对象，此操作无法撤销。`" confirm-text="永久删除" :busy="deleting" @confirm="confirmDelete" />
-    <ConfirmDialog v-model:open="listTypeOpen" :title="pendingListType === 'Block' ? '批量加入黑名单？' : '批量加入白名单？'" :description="`将更新所选 ${selected.size} 个文件的访问名单状态。`" :confirm-text="pendingListType === 'Block' ? '加入黑名单' : '加入白名单'" :busy="batchBusy" @confirm="confirmListType" />
+    <ConfirmDialog v-model:open="deleteOpen" :title="t('modern.files.deleteTitle')" :description="t('modern.files.deleteDescription', { count: selected.size })" :confirm-text="t('modern.files.deleteForever')" :busy="deleting" @confirm="confirmDelete" />
+    <ConfirmDialog v-model:open="listTypeOpen" :title="t(pendingListType === 'Block' ? 'modern.files.blockTitle' : 'modern.files.allowTitle')" :description="t('modern.files.listDescription', { count: selected.size })" :confirm-text="t(pendingListType === 'Block' ? 'modern.files.addBlock' : 'modern.files.addAllow')" :busy="batchBusy" @confirm="confirmListType" />
     <FileActionsDialog v-if="mode === 'admin'" v-model:open="actionsOpen" :file="activeFile" :url="activeFile ? fileUrl(activeFile) : undefined" @changed="load" />
   </section>
 </template>

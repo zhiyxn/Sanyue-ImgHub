@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { FolderOpen, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, UploadCloud } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import BrandMark from './BrandMark.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import LanguageToggle from './LanguageToggle.vue'
 import { useAppStore } from '@/stores/app'
 import { api } from '@/services/api'
 
@@ -17,13 +19,14 @@ const props = withDefaults(defineProps<{ admin?: boolean; contained?: boolean }>
 const store = useAppStore()
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const mobileOpen = defineModel<boolean>('mobileOpen', { default: false })
 
-const adminLinks = [
-  { to: '/dashboard', label: '文件管理', icon: FolderOpen },
-  { to: '/customerConfig', label: '访问规则', icon: ShieldCheck },
-  { to: '/systemConfig', label: '系统设置', icon: Settings },
-]
+const adminLinks = computed(() => [
+  { to: '/dashboard', label: t('modern.nav.files'), icon: FolderOpen },
+  { to: '/customerConfig', label: t('modern.nav.access'), icon: ShieldCheck },
+  { to: '/systemConfig', label: t('modern.nav.settings'), icon: Settings },
+])
 
 const isAdminSession = computed(() => store.session.valid && store.session.authType === 'admin')
 
@@ -32,7 +35,7 @@ async function logout() {
     await api.logout(props.admin ? 'admin' : 'user')
   } finally {
     await store.refreshSession().catch(() => undefined)
-    toast.success('已安全退出')
+    toast.success(t('modern.nav.logoutSuccess'))
     router.push(props.admin ? '/adminLogin' : '/login')
   }
 }
@@ -61,16 +64,17 @@ async function logout() {
 
         <div class="ml-auto flex items-center gap-1">
           <Button v-if="!admin" variant="ghost" size="sm" as-child @click="router.push('/browse')">
-            <FolderOpen /> 浏览
+            <FolderOpen /> {{ t('modern.nav.browse') }}
           </Button>
           <Button v-if="!admin" variant="ghost" size="sm" @click="router.push(isAdminSession ? '/dashboard' : '/adminLogin')">
-            <LayoutDashboard /> 管理后台
+            <LayoutDashboard /> {{ t('modern.nav.admin') }}
           </Button>
           <ThemeToggle />
-          <Button v-if="store.session.valid" variant="ghost" size="icon" aria-label="退出登录" @click="logout">
+          <LanguageToggle />
+          <Button v-if="store.session.valid" variant="ghost" size="icon" :aria-label="t('modern.nav.logout')" @click="logout">
             <LogOut />
           </Button>
-          <Button v-if="admin" variant="ghost" size="icon" class="md:hidden" aria-label="打开导航" @click="mobileOpen = !mobileOpen">
+          <Button v-if="admin" variant="ghost" size="icon" class="md:hidden" :aria-label="t('modern.nav.openNav')" @click="mobileOpen = !mobileOpen">
             <Menu />
           </Button>
         </div>

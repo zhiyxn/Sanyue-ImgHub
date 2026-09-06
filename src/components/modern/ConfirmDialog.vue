@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from 'reka-ui'
 import { Button } from '@/components/ui/button'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(defineProps<{
   open: boolean
@@ -17,9 +18,10 @@ const props = withDefaults(defineProps<{
   description: string
   confirmText?: string
   busy?: boolean
-}>(), { confirmText: '确认' })
+}>(), { confirmText: '' })
 
 const emit = defineEmits<{ 'update:open': [value: boolean]; confirm: [] }>()
+const { t } = useI18n()
 </script>
 
 <template>
@@ -30,8 +32,8 @@ const emit = defineEmits<{ 'update:open': [value: boolean]; confirm: [] }>()
         <AlertDialogTitle class="text-lg font-semibold">{{ title }}</AlertDialogTitle>
         <AlertDialogDescription class="mt-2 text-sm leading-6 text-muted-foreground">{{ description }}</AlertDialogDescription>
         <div class="mt-6 flex justify-end gap-2">
-          <AlertDialogCancel as-child><Button variant="outline" :disabled="busy">取消</Button></AlertDialogCancel>
-          <AlertDialogAction as-child><Button variant="destructive" :disabled="busy" @click.prevent="emit('confirm')">{{ busy ? '处理中…' : confirmText }}</Button></AlertDialogAction>
+          <AlertDialogCancel as-child><Button variant="outline" :disabled="busy">{{ t('common.cancel') }}</Button></AlertDialogCancel>
+          <AlertDialogAction as-child><Button variant="destructive" :disabled="busy" @click.prevent="emit('confirm')">{{ busy ? t('common.loading') : (confirmText || t('common.confirm')) }}</Button></AlertDialogAction>
         </div>
       </AlertDialogContent>
     </AlertDialogPortal>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   Activity,
@@ -21,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import BrandMark from './BrandMark.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import LanguageToggle from './LanguageToggle.vue'
 import { api } from '@/services/api'
 import { useAppStore } from '@/stores/app'
 
@@ -32,21 +34,22 @@ defineProps<{
 const route = useRoute()
 const router = useRouter()
 const store = useAppStore()
+const { t } = useI18n()
 const collapsed = ref(false)
 const mobileOpen = ref(false)
 
-const primaryLinks = [
-  { to: '/dashboard', label: '系统状态', icon: Activity, exact: true },
-  { to: '/dashboard/files', label: '文件管理', icon: FolderOpen },
-  { to: '/dashboard/users', label: '用户管理', icon: Users },
-  { to: '/dashboard/access', label: '访问规则', icon: ShieldCheck },
-  { to: '/dashboard/settings', label: '系统设置', icon: Settings2 },
-]
+const primaryLinks = computed(() => [
+  { to: '/dashboard', label: t('modern.nav.status'), icon: Activity, exact: true },
+  { to: '/dashboard/files', label: t('modern.nav.files'), icon: FolderOpen },
+  { to: '/dashboard/users', label: t('modern.nav.users'), icon: Users },
+  { to: '/dashboard/access', label: t('modern.nav.access'), icon: ShieldCheck },
+  { to: '/dashboard/settings', label: t('modern.nav.settings'), icon: Settings2 },
+])
 
-const secondaryLinks = [
-  { to: '/', label: '返回上传页', icon: UploadCloud },
-  { to: '/browse', label: '公开浏览', icon: Images },
-]
+const secondaryLinks = computed(() => [
+  { to: '/', label: t('modern.nav.backUpload'), icon: UploadCloud },
+  { to: '/browse', label: t('modern.nav.publicBrowse'), icon: Images },
+])
 
 const isCurrent = (item: { to: string; exact?: boolean }) =>
   item.exact ? route.path === item.to : route.path.startsWith(item.to)
@@ -58,7 +61,7 @@ async function logout() {
     await api.logout('admin')
   } finally {
     await store.refreshSession().catch(() => undefined)
-    toast.success('已安全退出管理后台')
+    toast.success(t('modern.nav.adminLogoutSuccess'))
     router.push('/adminLogin')
   }
 }
@@ -88,7 +91,7 @@ async function logout() {
       </div>
 
       <div class="flex-1 overflow-y-auto px-2 py-4">
-        <p v-if="!collapsed" class="mb-2 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">管理</p>
+        <p v-if="!collapsed" class="mb-2 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{{ t('modern.nav.management') }}</p>
         <nav class="space-y-1" aria-label="后台导航">
           <RouterLink
             v-for="item in primaryLinks"
@@ -105,7 +108,7 @@ async function logout() {
         </nav>
 
         <Separator class="my-4" />
-        <p v-if="!collapsed" class="mb-2 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">站点</p>
+        <p v-if="!collapsed" class="mb-2 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{{ t('modern.nav.site') }}</p>
         <nav class="space-y-1" aria-label="站点导航">
           <RouterLink
             v-for="item in secondaryLinks"
@@ -123,10 +126,10 @@ async function logout() {
             target="_blank"
             rel="noreferrer"
             class="focus-ring flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            :title="collapsed ? '项目仓库' : undefined"
+            :title="collapsed ? t('modern.nav.repository') : undefined"
           >
             <GitFork class="size-4 shrink-0" />
-            <span v-if="!collapsed" class="truncate">项目仓库</span>
+            <span v-if="!collapsed" class="truncate">{{ t('modern.nav.repository') }}</span>
           </a>
         </nav>
       </div>
@@ -135,8 +138,8 @@ async function logout() {
         <div class="flex items-center gap-2 rounded-lg p-2" :class="collapsed && 'lg:justify-center'">
           <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-stone-900 text-xs font-semibold text-stone-50 dark:bg-stone-100 dark:text-stone-900">AD</span>
           <div v-if="!collapsed" class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium">管理员</p>
-            <p class="truncate text-xs text-muted-foreground">已通过后台认证</p>
+            <p class="truncate text-sm font-medium">{{ t('modern.nav.administrator') }}</p>
+            <p class="truncate text-xs text-muted-foreground">{{ t('modern.nav.authenticated') }}</p>
           </div>
           <Button v-if="!collapsed" variant="ghost" size="icon" aria-label="退出后台" @click="logout"><LogOut /></Button>
         </div>
@@ -158,6 +161,7 @@ async function logout() {
         <div class="ml-auto flex items-center gap-1">
           <slot name="header-actions" />
           <ThemeToggle />
+          <LanguageToggle />
         </div>
       </header>
 
