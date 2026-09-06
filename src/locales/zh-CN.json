@@ -1290,6 +1290,9 @@
       "fixedHint": "由环境变量提供，无法在此修改",
       "urlHint": "也可以直接粘贴已有图片地址"
     },
+    "directory": {
+      "loading": "正在读取目录…"
+    },
     "uploadHistory": {
       "title": "上传历史",
       "description": "本机保存的最近上传记录，共 {count} 条。",

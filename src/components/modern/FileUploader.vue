@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Check, ChevronDown, Clipboard, ClipboardPaste, File as FileIcon, Folder, History, Link2, LoaderCircle, RotateCcw, Trash2, UploadCloud, X } from '@lucide/vue'
+import { Check, ChevronDown, Clipboard, ClipboardPaste, File as FileIcon, History, Link2, LoaderCircle, RotateCcw, Trash2, UploadCloud, X } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -17,6 +17,7 @@ import { useAppStore } from '@/stores/app'
 import { copyText, formatBytes } from '@/lib/utils'
 import { formatUploadedLink, processImageForUpload } from '@/lib/upload-processing'
 import UploadHistoryDialog, { type UploadHistoryItem } from './UploadHistoryDialog.vue'
+import DirectoryAutocompleteInput from './DirectoryAutocompleteInput.vue'
 import type { LinkFormat } from '@/lib/upload-processing'
 import type { ChannelMap, UploadChannelType } from '@/types/api'
 
@@ -390,7 +391,7 @@ async function copyAllResults() {
           </div>
           <div class="space-y-2">
             <Label for="folder">{{ t('modern.upload.folder') }}</Label>
-            <div class="relative"><Folder class="absolute left-3 top-3 size-4 text-muted-foreground" /><Input id="folder" v-model="folder" class="pl-9" :placeholder="t('modern.upload.folderPlaceholder')" /></div>
+            <DirectoryAutocompleteInput v-model="folder" :placeholder="t('modern.upload.folderPlaceholder')" />
           </div>
           <div class="space-y-2">
             <Label for="link-format">{{ t('modern.upload.linkFormat') }}</Label>

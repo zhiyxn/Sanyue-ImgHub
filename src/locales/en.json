@@ -1282,6 +1282,9 @@
       "fixedHint": "Provided by an environment variable and cannot be changed here",
       "urlHint": "You can also paste an existing image URL"
     },
+    "directory": {
+      "loading": "Loading directories…"
+    },
     "uploadHistory": {
       "title": "Upload history",
       "description": "{count} recent uploads saved in this browser.",
