@@ -443,7 +443,7 @@ onBeforeUnmount(() => {
         <div class="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div class="flex items-center gap-2 font-semibold"><Activity class="size-4 text-primary" />上传趋势</div>
-            <p class="mt-1 text-xs text-muted-foreground">所选时间段共 {{ formatNumber(trendTotal) }} 次上传</p>
+            <p class="mt-1 text-xs text-muted-foreground">最近 7 天共 {{ formatNumber(trendTotal) }} 次上传</p>
           </div>
           <div class="flex gap-2">
             <Select v-model="trendGroupBy">
@@ -470,7 +470,7 @@ onBeforeUnmount(() => {
                 <span>{{ shortTrendLabel(trendLabels.length - 1) }}</span>
               </div>
             </div>
-            <div v-else class="grid h-64 place-items-center rounded-lg border border-dashed text-sm text-muted-foreground">所选时间段暂无上传数据</div>
+            <div v-else class="grid h-64 place-items-center rounded-lg border border-dashed text-sm text-muted-foreground">最近 7 天暂无上传数据</div>
           </div>
           <div>
             <p class="mb-3 text-xs font-medium text-muted-foreground">主要来源</p>
