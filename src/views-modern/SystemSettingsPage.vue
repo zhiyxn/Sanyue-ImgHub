@@ -97,9 +97,9 @@ async function save() {
       </TabsList>
     </Tabs>
 
-    <div v-if="loading" class="max-w-5xl space-y-4"><Skeleton v-for="index in 4" :key="index" class="h-64 rounded-xl" /></div>
+    <div v-if="loading" class="w-full space-y-4"><Skeleton v-for="index in 4" :key="index" class="h-64 rounded-xl" /></div>
 
-    <div v-else-if="tab === 'page'" class="max-w-5xl space-y-5">
+    <div v-else-if="tab === 'page'" class="w-full space-y-5">
       <Card v-for="[category, fields] in pageCategories" :key="category" class="p-5 shadow-none">
         <div class="mb-5 flex items-center gap-3"><span class="grid size-9 place-items-center rounded-lg bg-muted"><ServerCog class="size-4" /></span><h2 class="font-semibold">{{ category }}</h2></div>
         <div class="space-y-5">
@@ -108,7 +108,7 @@ async function save() {
       </Card>
     </div>
 
-    <div v-else-if="tab === 'security' && security" class="max-w-5xl space-y-5">
+    <div v-else-if="tab === 'security' && security" class="w-full space-y-5">
       <Card class="p-5 shadow-none">
         <h2 class="font-semibold">普通用户认证</h2>
         <p class="mt-1 text-xs text-muted-foreground">保护上传页和需要用户权限的接口。</p>
@@ -137,7 +137,7 @@ async function save() {
       </Card>
     </div>
 
-    <div v-else-if="tab === 'storage'" class="max-w-5xl space-y-4">
+    <div v-else-if="tab === 'storage'" class="w-full space-y-4">
       <Card v-for="group in storageGroups" :key="group.key" class="p-5 shadow-none">
         <div class="flex items-center justify-between"><h2 class="font-semibold capitalize">{{ group.key }}</h2><Badge variant="secondary">{{ group.channels.length }} 个渠道</Badge></div>
         <div class="mt-4 space-y-2">

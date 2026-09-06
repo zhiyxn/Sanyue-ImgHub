@@ -105,7 +105,6 @@ interface TaskError extends Error {
 const loading = ref(true)
 const loadError = ref('')
 const now = ref(new Date())
-const rangeDays = ref(14)
 const trendGroupBy = ref<'channel' | 'channelName'>('channel')
 const info = ref<IndexInfo>({})
 const storage = ref<IndexStorage>({})
@@ -182,7 +181,7 @@ function getDateRange(days: number) {
 async function loadStatus(silent = false) {
   if (!silent) loading.value = true
   loadError.value = ''
-  const { startDate, endDate } = getDateRange(rangeDays.value)
+  const { startDate, endDate } = getDateRange(7)
   const results = await Promise.allSettled([
     api.systemInfo({
       timezoneOffset: new Date().getTimezoneOffset(),
@@ -447,15 +446,6 @@ onBeforeUnmount(() => {
             <p class="mt-1 text-xs text-muted-foreground">所选时间段共 {{ formatNumber(trendTotal) }} 次上传</p>
           </div>
           <div class="flex gap-2">
-            <Select v-model="rangeDays" @update:model-value="loadStatus()">
-              <SelectTrigger class="h-9 w-32 text-xs" aria-label="趋势时间范围"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem :value="7">最近 7 天</SelectItem>
-                <SelectItem :value="14">最近 14 天</SelectItem>
-                <SelectItem :value="30">最近 30 天</SelectItem>
-                <SelectItem :value="90">最近 90 天</SelectItem>
-              </SelectContent>
-            </Select>
             <Select v-model="trendGroupBy">
               <SelectTrigger class="h-9 w-32 text-xs" aria-label="趋势分组"><SelectValue /></SelectTrigger>
               <SelectContent>
