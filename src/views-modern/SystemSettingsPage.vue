@@ -6,12 +6,12 @@ import AdminShell from '@/components/modern/AdminShell.vue'
 import PageHeading from '@/components/modern/PageHeading.vue'
 import ConfigFieldInput from '@/components/modern/ConfigFieldInput.vue'
 import ApiTokensPanel from '@/components/modern/ApiTokensPanel.vue'
+import StorageChannelsPanel from '@/components/modern/StorageChannelsPanel.vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -25,7 +25,6 @@ const loading = ref(true)
 const saving = ref(false)
 const page = ref<PageSettings>({ config: [] })
 const security = ref<SecuritySettings>()
-const upload = ref<Record<string, unknown>>({})
 const store = useAppStore()
 
 const tabs = [
@@ -43,24 +42,13 @@ const pageCategories = computed(() => {
   return [...grouped.entries()]
 })
 
-const storageGroups = computed(() =>
-  Object.entries(upload.value)
-    .map(([key, value]) => {
-      const group = value as { channels?: Array<Record<string, unknown>> }
-      return { key, channels: Array.isArray(group?.channels) ? group.channels : [] }
-    })
-    .filter((group) => group.channels.length),
-)
-
 onMounted(async () => {
   const results = await Promise.allSettled([
     api.getPageSettings(),
     api.getSecuritySettings(),
-    api.getUploadSettings(),
   ])
   if (results[0].status === 'fulfilled') page.value = results[0].value
   if (results[1].status === 'fulfilled') security.value = results[1].value
-  if (results[2].status === 'fulfilled') upload.value = results[2].value
   const rejected = results.find((item) => item.status === 'rejected')
   if (rejected?.status === 'rejected') toast.error(rejected.reason instanceof Error ? rejected.reason.message : '部分配置加载失败')
   loading.value = false
@@ -139,16 +127,6 @@ async function save() {
       </Card>
     </div>
 
-    <div v-else-if="tab === 'storage'" class="w-full space-y-4">
-      <Card v-for="group in storageGroups" :key="group.key" class="p-5 shadow-none">
-        <div class="flex items-center justify-between"><h2 class="font-semibold capitalize">{{ group.key }}</h2><Badge variant="secondary">{{ group.channels.length }} 个渠道</Badge></div>
-        <div class="mt-4 space-y-2">
-          <div v-for="channel in group.channels" :key="String(channel.name)" class="flex items-center justify-between rounded-lg border p-3">
-            <div class="min-w-0"><p class="truncate text-sm font-medium">{{ channel.name }}</p><p class="text-xs text-muted-foreground">{{ channel.savePath === 'environment variable' ? '环境变量' : '系统配置' }}</p></div>
-            <Badge :variant="channel.enabled === false ? 'outline' : 'success'">{{ channel.enabled === false ? '停用' : '可用' }}</Badge>
-          </div>
-        </div>
-      </Card>
-    </div>
+    <StorageChannelsPanel v-else-if="tab === 'storage'" />
   </AdminShell>
 </template>

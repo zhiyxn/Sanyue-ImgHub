@@ -9,6 +9,8 @@ import type {
   PageSettings,
   SecuritySettings,
   SessionState,
+  UploadSettings,
+  QuotaStatsResponse,
   UploadChannelType,
   UploadResponse,
   UserConfig,
@@ -144,7 +146,16 @@ export const api = {
     return (await http.post('/api/manage/sysConfig/others', settings)).data
   },
   async getUploadSettings() {
-    return (await http.get<Record<string, unknown>>('/api/manage/sysConfig/upload')).data
+    return (await http.get<UploadSettings>('/api/manage/sysConfig/upload')).data
+  },
+  async saveUploadSettings(settings: UploadSettings) {
+    return (await http.post<UploadSettings>('/api/manage/sysConfig/upload', settings)).data
+  },
+  async getQuotaStats() {
+    return (await http.get<QuotaStatsResponse>('/api/manage/quota')).data
+  },
+  async recalculateQuota() {
+    return (await http.post<QuotaStatsResponse>('/api/manage/quota')).data
   },
   async updateMetadata(fileId: string, metadata: { FileName?: string; FileType?: string }) {
     return (await http.patch(`/api/manage/metadata/${encodeURIComponent(fileId)}`, metadata)).data

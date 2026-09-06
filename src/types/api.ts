@@ -113,6 +113,59 @@ export interface ApiTokenInput {
   autoDelete: boolean
 }
 
+export interface StorageQuota {
+  enabled: boolean
+  limitGB: number
+  threshold: number
+}
+
+export interface StorageChannel {
+  id?: number
+  name: string
+  type: UploadChannelType
+  savePath?: string
+  enabled: boolean
+  fixed?: boolean
+  quota?: StorageQuota
+  botToken?: string
+  chatId?: string
+  proxyUrl?: string
+  publicUrl?: string
+  endpoint?: string
+  cdnDomain?: string
+  bucketName?: string
+  region?: string
+  accessKeyId?: string
+  secretAccessKey?: string
+  pathStyle?: boolean
+  channelId?: string
+  isNitro?: boolean
+  repo?: string
+  token?: string
+  isPrivate?: boolean
+  baseUrl?: string
+  username?: string
+  password?: string
+  headers?: Record<string, string>
+  createDirectory?: boolean
+}
+
+export interface StorageChannelGroup {
+  channels: StorageChannel[]
+  loadBalance?: { enabled: boolean; channels: string[] }
+}
+
+export type UploadSettings = Partial<Record<UploadChannelType, StorageChannelGroup>>
+
+export interface QuotaStatsResponse {
+  success: boolean
+  quotaStats?: Record<string, { usedMB?: number; count?: number }>
+  channelStats?: Record<string, { usedMB?: number; count?: number }>
+  totalSizeMB?: number
+  totalCount?: number
+  lastUpdated?: number
+}
+
 export interface ConfigOption {
   label: string
   label_en?: string
