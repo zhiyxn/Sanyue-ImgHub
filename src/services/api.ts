@@ -127,6 +127,18 @@ export const api = {
   async batchDelete(names: string[]) {
     return (await http.post('/api/manage/delete/batch', { fileIds: names })).data
   },
+  async batchSetListType(fileIds: string[], listType: 'Block' | 'White') {
+    return Promise.all(fileIds.map((fileId) => api.setListType(fileId, listType)))
+  },
+  async batchMove(fileIds: string[], destination: string) {
+    return Promise.all(fileIds.map((fileId) => api.moveFile(fileId, destination)))
+  },
+  async batchTags(fileIds: string[], action: 'set' | 'add' | 'remove', tags: string[]) {
+    return (await http.post('/api/manage/tags/batch', { fileIds, action, tags })).data
+  },
+  async tagSuggestions(prefix = '') {
+    return (await http.get<{ tags: string[] }>('/api/manage/tags/autocomplete', { params: { prefix, limit: 20 } })).data.tags
+  },
   async getPageSettings() {
     return (await http.get<PageSettings>('/api/manage/sysConfig/page')).data
   },

@@ -9,14 +9,14 @@ import {
   DialogRoot,
   DialogTitle,
 } from 'reka-ui'
-import { Ban, CheckCircle2, ExternalLink, LoaderCircle, Save, X } from '@lucide/vue'
+import { Ban, CheckCircle2, Clipboard, Download, ExternalLink, LoaderCircle, Save, X } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { api } from '@/services/api'
-import { formatDate } from '@/lib/utils'
+import { copyText, formatDate } from '@/lib/utils'
 import type { FileRecord } from '@/types/api'
 
 const props = defineProps<{ open: boolean; file?: FileRecord; url?: string }>()
@@ -71,6 +71,27 @@ async function setListType(type: 'Block' | 'White') {
     saving.value = false
   }
 }
+
+async function copyFormat(format: 'url' | 'markdown' | 'html' | 'bbcode') {
+  if (!props.file || !props.url) return
+  const name = props.file.metadata?.FileName || props.file.name.split('/').pop() || props.file.name
+  const values = {
+    url: props.url,
+    markdown: `![${name}](${props.url})`,
+    html: `<img src="${props.url}" alt="${name}">`,
+    bbcode: `[img]${props.url}[/img]`,
+  }
+  await copyText(values[format])
+  toast.success('链接代码已复制')
+}
+
+function downloadFile() {
+  if (!props.url || !props.file) return
+  const anchor = document.createElement('a')
+  anchor.href = props.url
+  anchor.download = props.file.metadata?.FileName || props.file.name.split('/').pop() || 'download'
+  anchor.click()
+}
 </script>
 
 <template>
@@ -95,6 +116,11 @@ async function setListType(type: 'Block' | 'White') {
             <div><p class="text-muted-foreground">渠道名称</p><p class="mt-1 font-medium">{{ file.metadata?.ChannelName || '—' }}</p></div>
             <div><p class="text-muted-foreground">所在目录</p><p class="mt-1 truncate font-medium">{{ folder }}</p></div>
             <div><p class="text-muted-foreground">上传时间</p><p class="mt-1 font-medium">{{ formatDate(file.metadata?.TimeStamp) }}</p></div>
+          </div>
+
+          <div class="rounded-xl border p-4">
+            <div class="mb-3 flex items-center justify-between"><div><p class="text-sm font-medium">链接与下载</p><p class="text-xs text-muted-foreground">复制常用发布格式，或下载原文件。</p></div><Button variant="ghost" size="icon" aria-label="下载文件" @click="downloadFile"><Download /></Button></div>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4"><Button variant="outline" size="sm" @click="copyFormat('url')"><Clipboard />原链接</Button><Button variant="outline" size="sm" @click="copyFormat('markdown')">Markdown</Button><Button variant="outline" size="sm" @click="copyFormat('html')">HTML</Button><Button variant="outline" size="sm" @click="copyFormat('bbcode')">BBCode</Button></div>
           </div>
 
           <div class="space-y-4">
