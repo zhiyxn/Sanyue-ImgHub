@@ -91,6 +91,28 @@ export interface CustomerFilesResponse {
   total: number
 }
 
+export type ApiTokenPermission = 'upload' | 'delete' | 'list' | 'manage'
+
+export interface ApiTokenRecord {
+  id: string
+  name: string
+  owner: string
+  permissions: ApiTokenPermission[]
+  token: string
+  createdAt: string
+  updatedAt: string
+  expiresAt: string | null
+  autoDelete: boolean
+}
+
+export interface ApiTokenInput {
+  name: string
+  owner: string
+  permissions: ApiTokenPermission[]
+  expiresAt: string | null
+  autoDelete: boolean
+}
+
 export interface ConfigOption {
   label: string
   label_en?: string

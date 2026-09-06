@@ -1,5 +1,7 @@
 import { http } from './http'
 import type {
+  ApiTokenInput,
+  ApiTokenRecord,
   ChannelMap,
   CustomerFilesResponse,
   CustomerSummary,
@@ -104,6 +106,18 @@ export const api = {
     return (await http.post(`/api/manage/cusConfig/${action}`, ip, {
       headers: { 'Content-Type': 'text/plain' },
     })).data
+  },
+  async apiTokens() {
+    return (await http.get<{ tokens: ApiTokenRecord[] }>('/api/manage/apiTokens')).data.tokens
+  },
+  async createApiToken(input: ApiTokenInput) {
+    return (await http.post<ApiTokenRecord>('/api/manage/apiTokens', input)).data
+  },
+  async updateApiToken(tokenId: string, input: Pick<ApiTokenInput, 'permissions' | 'expiresAt' | 'autoDelete'>) {
+    return (await http.put('/api/manage/apiTokens', { tokenId, ...input })).data
+  },
+  async deleteApiToken(tokenId: string) {
+    return (await http.delete('/api/manage/apiTokens', { params: { id: tokenId } })).data
   },
   async deleteFile(name: string) {
     return (await http.delete(`/api/manage/delete/${encodeURIComponent(name)}`)).data

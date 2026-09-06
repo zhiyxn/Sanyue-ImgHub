@@ -5,6 +5,7 @@ import { toast } from 'vue-sonner'
 import AdminShell from '@/components/modern/AdminShell.vue'
 import PageHeading from '@/components/modern/PageHeading.vue'
 import ConfigFieldInput from '@/components/modern/ConfigFieldInput.vue'
+import ApiTokensPanel from '@/components/modern/ApiTokensPanel.vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -124,6 +125,7 @@ async function save() {
           <label class="flex items-center gap-2 text-sm"><Checkbox v-model="security.auth.admin._clear" />清除管理员账号和密码</label>
         </div>
       </Card>
+      <ApiTokensPanel />
       <Card class="p-5 shadow-none">
         <h2 class="font-semibold">会话与访问策略</h2>
         <div class="mt-5 grid gap-5 sm:grid-cols-2">
