@@ -55,6 +55,8 @@ export const api = {
       autoRetry?: boolean
       returnFormat?: 'default' | 'full'
       uploadNameType?: 'default' | 'index' | 'origin' | 'short'
+      serverCompress?: boolean
+      externalUrl?: string
       signal?: AbortSignal
       onProgress?: (progress: number) => void
     },
@@ -64,12 +66,14 @@ export const api = {
 
     const body = new FormData()
     body.append('file', file)
+    if (options.externalUrl) body.append('url', options.externalUrl)
     const response = await http.post<UploadResponse[]>('/upload', body, {
       params: {
         uploadChannel: options.channel,
         channelName: options.channelName || undefined,
         uploadFolder: options.folder || undefined,
         autoRetry: options.autoRetry === false ? 'false' : undefined,
+        serverCompress: options.serverCompress === false ? 'false' : undefined,
         uploadNameType: options.uploadNameType || 'default',
         returnFormat: options.returnFormat || 'full',
       },
@@ -200,6 +204,8 @@ async function uploadInChunks(
     autoRetry?: boolean
     returnFormat?: 'default' | 'full'
     uploadNameType?: 'default' | 'index' | 'origin' | 'short'
+    serverCompress?: boolean
+    externalUrl?: string
     signal?: AbortSignal
     onProgress?: (progress: number) => void
   },
@@ -211,6 +217,7 @@ async function uploadInChunks(
     channelName: options.channelName || undefined,
     uploadFolder: options.folder || undefined,
     autoRetry: options.autoRetry === false ? 'false' : undefined,
+    serverCompress: options.serverCompress === false ? 'false' : undefined,
     uploadNameType: options.uploadNameType || 'default',
     returnFormat: options.returnFormat || 'full',
   }

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import EmptyState from './EmptyState.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import FileActionsDialog from './FileActionsDialog.vue'
+import TagAutocompleteInput from './TagAutocompleteInput.vue'
 import { api } from '@/services/api'
 import { copyText, formatBytes, formatDate } from '@/lib/utils'
 import type { ChannelMap, FileListResponse, FileRecord } from '@/types/api'
@@ -320,7 +321,7 @@ onMounted(() => {
     </Card>
 
     <div v-if="mode === 'admin' && hasSelection" class="flex items-center justify-between rounded-xl border bg-card p-3 shadow-sm">
-      <div class="min-w-0"><p class="pl-1 text-sm">已选择 <strong>{{ selected.size }}</strong> 项</p><div v-if="batchPanel" class="mt-2 flex max-w-lg gap-2"><Input v-model="batchValue" class="h-9" :placeholder="batchPanel === 'move' ? '目标目录，例如 archive/2026' : '标签，使用英文逗号分隔'" @keyup.enter="executeBatchPanel" /><Button size="sm" :disabled="batchBusy" @click="executeBatchPanel"><LoaderCircle v-if="batchBusy" class="animate-spin" />执行</Button></div></div>
+      <div class="min-w-0"><p class="pl-1 text-sm">已选择 <strong>{{ selected.size }}</strong> 项</p><div v-if="batchPanel" class="mt-2 flex max-w-lg gap-2"><Input v-if="batchPanel === 'move'" v-model="batchValue" class="h-9" placeholder="目标目录，例如 archive/2026" @keyup.enter="executeBatchPanel" /><TagAutocompleteInput v-else v-model="batchValue" class="min-w-64" placeholder="标签，使用英文逗号分隔" /><Button size="sm" :disabled="batchBusy" @click="executeBatchPanel"><LoaderCircle v-if="batchBusy" class="animate-spin" />执行</Button></div></div>
       <div class="flex flex-wrap justify-end gap-1"><Button variant="ghost" size="sm" :disabled="batchBusy" @click="copySelected"><Clipboard />复制</Button><Button variant="ghost" size="sm" :disabled="batchBusy" @click="downloadSelected"><Download />下载</Button><Button variant="ghost" size="sm" @click="batchPanel = batchPanel === 'tags' ? undefined : 'tags'; batchValue = ''"><Tags />标签</Button><Button variant="ghost" size="sm" @click="batchPanel = batchPanel === 'move' ? undefined : 'move'; batchValue = ''"><FolderInput />移动</Button><Button variant="ghost" size="sm" @click="askListType('White')"><CheckCircle2 />白名单</Button><Button variant="ghost" size="sm" @click="askListType('Block')"><Ban />黑名单</Button><Button variant="ghost" size="sm" @click="selected = new Set(); batchPanel = undefined">取消</Button><Button variant="destructive" size="sm" @click="deleteOpen = true"><Trash2 />删除</Button></div>
     </div>
 

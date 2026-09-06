@@ -29,6 +29,7 @@ interface UploadTask {
   error?: string
   originalSize?: number
   processedSize?: number
+  externalUrl?: string
 }
 
 interface UploadPreferences {
@@ -41,6 +42,7 @@ interface UploadPreferences {
   compressThreshold?: number
   compressTarget?: number
   convertToWebp?: boolean
+  serverCompress?: boolean
   linkFormat?: LinkFormat
 }
 
@@ -62,7 +64,9 @@ const compressImages = ref(preferences.compressImages ?? Boolean(store.config.de
 const compressThreshold = ref(preferences.compressThreshold ?? Number(store.config.defaultCompressBar || 5))
 const compressTarget = ref(preferences.compressTarget ?? Number(store.config.defaultCompressQuality || 4))
 const convertToWebp = ref(preferences.convertToWebp ?? Boolean(store.config.defaultConvertToWebp ?? false))
+const serverCompress = ref(preferences.serverCompress ?? true)
 const linkFormat = ref<LinkFormat>(preferences.linkFormat || (store.config.defaultUploadCopyUrlForm as LinkFormat) || 'url')
+const urlMode = ref<'save' | 'external'>('save')
 const pastedUrls = ref('')
 const fetchingUrls = ref(false)
 const expanded = ref(false)
@@ -108,11 +112,11 @@ onBeforeUnmount(() => {
   controllers.forEach((controller) => controller.abort())
 })
 
-watch([channel, channelName, folder, autoRetry, uploadNameType, compressImages, compressThreshold, compressTarget, convertToWebp, linkFormat], () => {
+watch([channel, channelName, folder, autoRetry, uploadNameType, compressImages, compressThreshold, compressTarget, convertToWebp, serverCompress, linkFormat], () => {
   const value: UploadPreferences = {
     channel: channel.value, channelName: channelName.value, folder: folder.value, autoRetry: autoRetry.value,
     uploadNameType: uploadNameType.value, compressImages: compressImages.value, compressThreshold: Number(compressThreshold.value),
-    compressTarget: Number(compressTarget.value), convertToWebp: convertToWebp.value, linkFormat: linkFormat.value,
+    compressTarget: Number(compressTarget.value), convertToWebp: convertToWebp.value, serverCompress: serverCompress.value, linkFormat: linkFormat.value,
   }
   localStorage.setItem('imghub-upload-preferences', JSON.stringify(value))
 })
@@ -173,6 +177,12 @@ async function addRemoteUrls() {
   let added = 0
   for (const url of urls) {
     try {
+      if (urlMode.value === 'external') {
+        const name = filenameFromRemote(url, '')
+        tasks.value.push({ id: crypto.randomUUID(), file: new File([], name, { type: 'text/plain' }), progress: 0, status: 'queued', externalUrl: url })
+        added += 1
+        continue
+      }
       const { blob, disposition } = await api.fetchRemoteResource(url)
       addFiles([new File([blob], filenameFromRemote(url, disposition), { type: blob.type || 'application/octet-stream' })])
       added += 1
@@ -200,6 +210,24 @@ async function uploadOne(task: UploadTask) {
   task.error = undefined
   task.progress = 0
   try {
+    if (task.externalUrl) {
+      const result = await api.upload(task.file, {
+        channel: 'external',
+        folder: folder.value.replace(/^\/+|\/+$/g, ''),
+        autoRetry: false,
+        uploadNameType: 'default',
+        returnFormat: 'full',
+        externalUrl: task.externalUrl,
+        serverCompress: false,
+        signal: controller.signal,
+        onProgress: (progress) => (task.progress = progress),
+      })
+      const uploaded = result[0]
+      task.result = uploaded?.publicUrl || uploaded?.src || task.externalUrl
+      task.progress = 100
+      task.status = 'done'
+      return
+    }
     const uploadFile = await processImageForUpload(task.file, {
       compress: compressImages.value,
       thresholdMB: Number(compressThreshold.value),
@@ -214,6 +242,7 @@ async function uploadOne(task: UploadTask) {
       folder: folder.value.replace(/^\/+|\/+$/g, ''),
       autoRetry: autoRetry.value,
       uploadNameType: uploadNameType.value,
+      serverCompress: channel.value === 'telegram' ? serverCompress.value : false,
       returnFormat: 'full',
       signal: controller.signal,
       onProgress: (progress) => (task.progress = progress),
@@ -286,9 +315,10 @@ async function copyAllResults() {
       </Card>
 
       <Card class="p-4 shadow-none">
-        <div class="mb-3 flex items-center gap-3"><span class="grid size-9 place-items-center rounded-lg bg-muted"><Link2 class="size-4" /></span><div><p class="text-sm font-medium">从链接获取文件</p><p class="text-xs text-muted-foreground">由你的 Cloudflare 部署代取远程资源，每行一个地址。</p></div></div>
+        <div class="mb-3 flex items-center gap-3"><span class="grid size-9 place-items-center rounded-lg bg-muted"><Link2 class="size-4" /></span><div><p class="text-sm font-medium">从链接添加</p><p class="text-xs text-muted-foreground">下载后上传到存储渠道，或仅保存原始外链；每行一个地址。</p></div></div>
+        <div class="mb-3 grid grid-cols-2 rounded-lg border bg-muted/30 p-1 text-sm"><button type="button" class="rounded-md px-3 py-2 transition" :class="urlMode === 'save' ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground'" @click="urlMode = 'save'">下载后上传</button><button type="button" class="rounded-md px-3 py-2 transition" :class="urlMode === 'external' ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground'" @click="urlMode = 'external'">仅保存外链</button></div>
         <Textarea v-model="pastedUrls" :rows="3" placeholder="https://example.com/image.jpg" />
-        <div class="mt-3 flex items-center justify-between gap-3"><p class="flex items-center gap-1.5 text-xs text-muted-foreground"><ClipboardPaste class="size-3.5" />也支持在页面空白处直接粘贴链接</p><Button variant="outline" size="sm" :disabled="fetchingUrls || !pastedUrls.trim()" @click="addRemoteUrls"><LoaderCircle v-if="fetchingUrls" class="animate-spin" /><Link2 v-else />添加到队列</Button></div>
+        <div class="mt-3 flex items-center justify-between gap-3"><p class="flex items-center gap-1.5 text-xs text-muted-foreground"><ClipboardPaste class="size-3.5" />{{ urlMode === 'external' ? '不会下载或占用存储空间' : '也支持在页面空白处直接粘贴链接' }}</p><Button variant="outline" size="sm" :disabled="fetchingUrls || !pastedUrls.trim()" @click="addRemoteUrls"><LoaderCircle v-if="fetchingUrls" class="animate-spin" /><Link2 v-else />添加到队列</Button></div>
       </Card>
 
       <div v-if="tasks.length" class="space-y-2">
@@ -302,7 +332,7 @@ async function copyAllResults() {
             <div v-else class="grid size-12 shrink-0 place-items-center rounded-lg bg-muted"><FileIcon class="size-5 text-muted-foreground" /></div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <p class="truncate text-sm font-medium">{{ task.file.name }}</p>
+                <p class="truncate text-sm font-medium">{{ task.file.name }}</p><Badge v-if="task.externalUrl" variant="outline">外链</Badge>
                 <Badge v-if="task.status === 'done'" variant="success"><Check class="mr-1 size-3" />完成</Badge>
                 <Badge v-else-if="task.status === 'error'" variant="destructive">失败</Badge>
               </div>
@@ -374,6 +404,7 @@ async function copyAllResults() {
             <div class="flex items-center justify-between gap-4"><div><p class="text-sm font-medium">转换为 WebP</p><p class="text-xs text-muted-foreground">跳过 GIF、SVG 和已是 WebP 的图片</p></div><Switch v-model="convertToWebp" /></div>
             <div class="flex items-center justify-between gap-4"><div><p class="text-sm font-medium">上传前压缩图片</p><p class="text-xs text-muted-foreground">在浏览器本地处理，不上传到第三方</p></div><Switch v-model="compressImages" /></div>
             <div v-if="compressImages" class="grid grid-cols-2 gap-3 rounded-lg border bg-muted/20 p-3"><div class="space-y-2"><Label for="compress-threshold">超过（MB）</Label><Input id="compress-threshold" v-model="compressThreshold" type="number" min="0.5" max="20" step="0.5" /></div><div class="space-y-2"><Label for="compress-target">目标（MB）</Label><Input id="compress-target" v-model="compressTarget" type="number" min="0.1" :max="compressThreshold" step="0.1" /></div></div>
+            <div v-if="channel === 'telegram'" class="flex items-center justify-between gap-4"><div><p class="text-sm font-medium">Telegram 服务端压缩</p><p class="text-xs text-muted-foreground">以图片方式发送；超过 10 MB 时后端会自动跳过</p></div><Switch v-model="serverCompress" /></div>
           </div>
         </div>
       </Card>

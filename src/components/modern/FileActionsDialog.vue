@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { api } from '@/services/api'
+import TagAutocompleteInput from './TagAutocompleteInput.vue'
 import { copyText, formatDate } from '@/lib/utils'
 import type { FileRecord } from '@/types/api'
 
@@ -127,7 +128,7 @@ function downloadFile() {
             <div class="space-y-2"><Label for="file-id">文件路径 / ID</Label><Input id="file-id" v-model="fileId" /><p class="text-xs text-muted-foreground">修改完整路径可以同时重命名或移动文件。</p></div>
             <div class="space-y-2"><Label for="display-name">显示名称</Label><Input id="display-name" v-model="displayName" placeholder="可选" /></div>
             <div class="space-y-2"><Label for="mime">MIME 类型</Label><Input id="mime" v-model="mimeType" placeholder="image/jpeg" /></div>
-            <div class="space-y-2"><Label for="tags">标签</Label><Input id="tags" v-model="tags" placeholder="旅行, 壁纸, 2026" /><p class="text-xs text-muted-foreground">使用英文逗号分隔多个标签。</p></div>
+            <div class="space-y-2"><Label for="tags">标签</Label><TagAutocompleteInput v-model="tags" placeholder="旅行, 壁纸, 2026" /><p class="text-xs text-muted-foreground">输入时会显示已有标签建议，使用英文逗号分隔多个标签。</p></div>
           </div>
 
           <div class="flex flex-wrap gap-2">
