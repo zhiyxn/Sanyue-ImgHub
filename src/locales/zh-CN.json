@@ -1315,6 +1315,7 @@
       "filter": "筛选渠道",
       "all": "全部渠道",
       "refreshQuota": "刷新容量",
+      "refreshQuotaProgress": "正在分批重建索引并统计容量",
       "channelCount": "{count} 个渠道",
       "loadBalanceSaved": "负载均衡设置已保存",
       "capacity": "容量",

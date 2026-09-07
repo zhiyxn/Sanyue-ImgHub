@@ -1307,6 +1307,7 @@
       "filter": "Filter providers",
       "all": "All providers",
       "refreshQuota": "Refresh capacity",
+      "refreshQuotaProgress": "Rebuilding the index in batches and calculating capacity",
       "channelCount": "{count} providers",
       "loadBalanceSaved": "Load-balancing settings saved",
       "capacity": "Capacity",

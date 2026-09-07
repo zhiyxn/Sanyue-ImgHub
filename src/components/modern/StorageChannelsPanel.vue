@@ -25,6 +25,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/services/api'
 import type { StorageChannel, StorageChannelGroup, UploadChannelType, UploadSettings } from '@/types/api'
+import IndexRebuilder from '@/utils/indexRebuilder.js'
 
 type StorageType = Exclude<UploadChannelType, 'external'>
 type EditableChannel = StorageChannel & { headersText?: string }
@@ -46,6 +47,8 @@ const quotaStats = ref<Record<string, { usedMB?: number; count?: number }>>({})
 const loading = ref(true)
 const saving = ref(false)
 const recalculating = ref(false)
+const quotaProgress = ref(0)
+let quotaTask: IndexRebuilder | undefined
 const filter = ref<'all' | StorageType>('all')
 const dialogOpen = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
@@ -251,16 +254,38 @@ async function confirmDelete() {
 }
 
 async function recalculateQuota() {
+  if (recalculating.value) return
   recalculating.value = true
+  quotaProgress.value = 1
+  quotaTask = new IndexRebuilder({
+    onProgress(payload) {
+      const current = Number(payload.current || 0)
+      const total = Number(payload.total || 0)
+      if (payload.phase === 'fetching') quotaProgress.value = total ? Math.min(60, (current / total) * 60) : Math.min(50, Math.log10(current + 1) * 15)
+      if (payload.phase === 'sorting') quotaProgress.value = 65
+      if (payload.phase === 'uploading') quotaProgress.value = total ? 70 + (current / total) * 25 : 75
+      if (payload.phase === 'finalizing') quotaProgress.value = 97
+      if (payload.phase === 'completed') quotaProgress.value = 100
+    },
+  })
   try {
-    const result = await api.recalculateQuota()
-    quotaStats.value = result.channelStats || result.quotaStats || {}
+    await quotaTask.rebuild()
+    const result = await api.getQuotaStats()
+    quotaStats.value = result.quotaStats || {}
     toast.success(t('sysUpload.quotaCalculateSuccess'))
   } catch (reason) {
-    toast.error(reason instanceof Error ? reason.message : t('sysUpload.quotaCalculateFailed'))
+    const error = reason as Error & { code?: string }
+    if (error.code !== 'ABORTED') toast.error(error.message || t('sysUpload.quotaCalculateFailed'))
   } finally {
     recalculating.value = false
+    quotaProgress.value = 0
+    quotaTask = undefined
   }
+}
+
+function cancelQuotaRebuild() {
+  quotaTask?.abort()
+  toast.info(t('modern.status.cancelling'))
 }
 
 onMounted(load)
@@ -272,9 +297,15 @@ onMounted(load)
       <div><h2 class="font-semibold">{{ t('sysUpload.title') }}</h2><p class="mt-1 text-xs text-muted-foreground">{{ t('modern.storage.description') }}</p></div>
       <div class="flex flex-wrap gap-2">
         <Select v-model="filter"><SelectTrigger class="w-40"><SelectValue :placeholder="t('modern.storage.filter')" /></SelectTrigger><SelectContent><SelectItem value="all">{{ t('modern.storage.all') }}</SelectItem><SelectItem v-for="item in channelTypes" :key="item.value" :value="item.value">{{ item.label }}</SelectItem></SelectContent></Select>
-        <Button variant="outline" :disabled="recalculating" @click="recalculateQuota"><RefreshCw :class="recalculating && 'animate-spin'" />{{ t('modern.storage.refreshQuota') }}</Button>
+        <Button variant="outline" :disabled="recalculating" @click="recalculateQuota"><RefreshCw :class="recalculating && 'animate-spin'" />{{ recalculating ? `${Math.round(quotaProgress)}%` : t('modern.storage.refreshQuota') }}</Button>
+        <Button v-if="recalculating" variant="ghost" size="icon" :aria-label="t('sysStatus.cancelOperation')" @click="cancelQuotaRebuild"><X /></Button>
         <Button @click="openCreate"><Plus />{{ t('sysUpload.addChannel') }}</Button>
       </div>
+    </div>
+
+    <div v-if="recalculating" class="space-y-2 rounded-xl border bg-muted/25 p-4">
+      <div class="flex items-center justify-between text-xs text-muted-foreground"><span>{{ t('modern.storage.refreshQuotaProgress') }}</span><span>{{ Math.round(quotaProgress) }}%</span></div>
+      <Progress :model-value="quotaProgress" />
     </div>
 
     <div v-if="loading" class="space-y-4"><Skeleton v-for="index in 4" :key="index" class="h-48 rounded-xl" /></div>
