@@ -27,7 +27,12 @@ export const api = {
     return (await http.post('/api/auth/login', { authCode })).data
   },
   async adminLogin(adminUsername: string, adminPassword: string) {
-    return (await http.post('/api/auth/adminLogin', { adminUsername, adminPassword })).data
+    return (
+      await http.post('/api/auth/adminLogin', {
+        username: adminUsername,
+        password: adminPassword,
+      })
+    ).data
   },
   async logout(authType: 'user' | 'admin') {
     return (await http.post('/api/auth/logout', { authType })).data
