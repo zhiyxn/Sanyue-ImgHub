@@ -22,13 +22,13 @@ jobs:
 
     steps:
       - name: Check out Sanyue ImgHub
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: frontend
           persist-credentials: false
 
       - name: Check out CloudFlare ImgBed backend
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: zhiyxn/CloudFlare-ImgBed
           ref: feature
@@ -36,7 +36,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -89,7 +89,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4"
           workingDirectory: app
-          command: pages deploy frontend-dist --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --branch=feature
+          command: pages deploy frontend-dist --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --branch=feature --commit-dirty=true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deployment summary
