@@ -1,0 +1,108 @@
+name: Deploy full stack to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - redesign/vue3-shadcn
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: cloudflare-pages-production
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: Build frontend and deploy Pages Functions
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out Sanyue ImgHub
+        uses: actions/checkout@v4
+        with:
+          path: frontend
+          persist-credentials: false
+
+      - name: Check out CloudFlare ImgBed backend
+        uses: actions/checkout@v4
+        with:
+          repository: zhiyxn/CloudFlare-ImgBed
+          ref: feature
+          path: app
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            app/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type check frontend
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Install backend dependencies
+        working-directory: app
+        run: npm ci --ignore-scripts
+
+      - name: Test backend
+        working-directory: app
+        run: node --test tests/*.test.mjs
+
+      - name: Assemble Pages deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app/frontend-dist -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+          cp -a frontend/dist/. app/frontend-dist/
+
+          test -f app/frontend-dist/index.html
+          test -f app/frontend-dist/static/media/404.png
+          test -f app/frontend-dist/static/media/BlockImg.png
+          test -d app/functions/api
+          test -f app/functions/upload/index.js
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          workingDirectory: app
+          command: pages deploy frontend-dist --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --branch=feature
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deployment summary
+        if: always()
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+        run: |
+          {
+            echo "## Cloudflare Pages deployment"
+            echo
+            echo "- Frontend commit: \`${GITHUB_SHA}\`"
+            echo "- Backend branch: \`zhiyxn/CloudFlare-ImgBed@feature\`"
+            echo "- Deployment URL: ${DEPLOYMENT_URL:-Unavailable}"
+            echo "- Branch alias: ${ALIAS_URL:-Unavailable}"
+          } >> "${GITHUB_STEP_SUMMARY}"
